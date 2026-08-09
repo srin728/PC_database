@@ -1,0 +1,4 @@
+# The HTML pages carry explicit noindex directives.
+# Crawlers are allowed to read them so they can observe those directives.
+User-agent: *
+Disallow:
