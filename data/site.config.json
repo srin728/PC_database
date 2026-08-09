@@ -2,8 +2,8 @@
   "siteTitle": "Parameterized Complexity Conference Papers",
   "shortTitle": "PC Papers",
   "siteSubtitle": "A lightweight bibliography of conference papers related to parameterized complexity.",
-  "contactUrl": "",
-  "repositoryUrl": "",
+  "repositoryUrl": "https://github.com/srin728/PC_datebase",
+  "contactUrl": "https://github.com/srin728".
   "includeRawBibTeX": false,
   "homeRecentPapers": 12,
   "homeRecentUpdates": 8
