@@ -1,0 +1,10 @@
+{
+  "siteTitle": "Parameterized Complexity Conference Papers",
+  "shortTitle": "PC Papers",
+  "siteSubtitle": "A lightweight bibliography of conference papers related to parameterized complexity.",
+  "contactUrl": "",
+  "repositoryUrl": "",
+  "includeRawBibTeX": false,
+  "homeRecentPapers": 12,
+  "homeRecentUpdates": 8
+}
