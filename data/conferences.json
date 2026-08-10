@@ -20,5 +20,8 @@
   "WALCOM": "International Conference and Workshops on Algorithms and Computation",
   "SOFSEM": "International Conference on Current Trends in Theory and Practice of Computer Science",
   "IWOCA": "International Workshop on Combinatorial Algorithms",
-  "COCOON": "International Computing and Combinatorics Conference"
+  "COCOON": "International Computing and Combinatorics Conference",
+  "SOSA": "Symposium on Simplicity in Algorithms",
+  "IPEC": "International Symposium on Parameterized and Exact Computation",
+  "AAAI": "AAAI Conference on Artificial Intelligence"
 }
