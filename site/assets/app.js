@@ -12,7 +12,7 @@
   backToTop.className = 'back-to-top';
   backToTop.setAttribute('aria-label', 'Back to top');
   backToTop.setAttribute('title', 'Back to top');
-  backToTop.innerHTML = '<span aria-hidden="true">↑</span><span class="back-to-top-label">Top</span>';
+  backToTop.innerHTML = '<span aria-hidden="true">↑</span>';
   document.body.appendChild(backToTop);
 
   const state = { data: null };
@@ -477,17 +477,11 @@
     navToggle.setAttribute('aria-expanded', String(open));
   });
 
-  function updateBackToTopVisibility() {
-    backToTop.classList.toggle('visible', window.scrollY > 420);
-  }
-
   backToTop.addEventListener('click', () => {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
   });
 
-  window.addEventListener('scroll', updateBackToTopVisibility, { passive: true });
-  updateBackToTopVisibility();
 
   window.addEventListener('hashchange', render);
 
