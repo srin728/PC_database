@@ -46,6 +46,10 @@
     );
   }
 
+  function allRecords() {
+    return [...(state.data.papers || []), ...(state.data.surveys || [])];
+  }
+
   function paperPrimaryUrl(p) {
     if (p.url) return p.url;
     if (p.doi) return `https://doi.org/${p.doi}`;
@@ -60,13 +64,15 @@
     const source = p.sourcePath ? `<a href="${esc(p.sourcePath)}" target="_blank" rel="noopener noreferrer">Source .bib</a>` : '';
     const raw = p.bibtex ? `<button type="button" class="copy-bib" data-bib-id="${esc(p.id)}">Copy BibTeX</button>` : '';
     const actions = [doi, source, raw].filter(Boolean).join('');
+    const bibliographicMeta = p.collection === 'survey'
+      ? `<span>Survey</span><span>${esc(p.year)}</span>`
+      : `<span><a href="#conference/${enc(p.conference)}">${esc(p.conference)}</a></span><span><a href="#year/${enc(p.year)}">${esc(p.year)}</a></span>`;
 
     return `<article class="paper-card">
       <h3 class="paper-title">${title}</h3>
       <p class="paper-authors">${esc(p.authorText || 'Unknown author')}</p>
       <div class="paper-meta">
-        <span><a href="#conference/${enc(p.conference)}">${esc(p.conference)}</a></span>
-        <span><a href="#year/${enc(p.year)}">${esc(p.year)}</a></span>
+        ${bibliographicMeta}
         ${p.pages ? `<span>pp. ${esc(p.pages)}</span>` : ''}
         <span>${esc(p.key)}</span>
       </div>
@@ -89,7 +95,7 @@
   function stats() {
     const f = state.data.facets;
     return `<div class="stats-grid">
-      <div class="stat-card"><span class="stat-value">${f.paperCount}</span><span class="stat-label">papers</span></div>
+      <div class="stat-card"><span class="stat-value">${f.paperCount}</span><span class="stat-label">conference papers</span></div>
       <div class="stat-card"><span class="stat-value">${f.yearCount}</span><span class="stat-label">years</span></div>
       <div class="stat-card"><span class="stat-value">${f.conferenceCount}</span><span class="stat-label">conferences</span></div>
       <div class="stat-card"><span class="stat-value">${f.tagCount}</span><span class="stat-label">tags</span></div>
@@ -97,13 +103,15 @@
   }
 
   function renderHome() {
-    const { site, papers, news, sourceUpdates, facets } = state.data;
+    const { site, papers, surveys = [], news, sourceUpdates, facets } = state.data;
     const latestPapers = sortPapers(papers).slice(0, site.homeRecentPapers || 12);
     const updates = [
       ...(news || []).map(n => ({...n, kind: 'news'})),
       ...(sourceUpdates || []).map(u => ({
         date: u.date,
-        title: `Bibliography update: ${u.conference} ${u.year || ''}`.trim(),
+        title: u.collection === 'survey'
+          ? `Survey bibliography update${u.year ? `: ${u.year}` : ''}`
+          : `Bibliography update: ${u.conference} ${u.year || ''}`.trim(),
         text: `${u.paperCount} entr${u.paperCount === 1 ? 'y' : 'ies'} currently in ${u.file}.`,
         kind: 'source'
       }))
@@ -119,7 +127,7 @@
         <p class="hero-subtitle">${esc(site.siteSubtitle)}</p>
         <div class="notice" aria-label="Scope notice">
           <ul>
-            <li><strong>Conference papers only.</strong> Journal-only papers are outside the scope of this database.</li>
+            <li><strong>The main database contains conference papers only.</strong> Survey papers are maintained separately and are excluded from the year and conference counts.</li>
             <li>The database is intended primarily for <strong>tracking research trends</strong> in parameterized complexity.</li>
             <li>If you notice a missing paper or incorrect metadata, <strong>please contact the maintainers.</strong></li>
           </ul>
@@ -139,6 +147,11 @@
       <section class="section">
         <div class="section-heading"><div><p class="eyebrow">Browse</p><h2>Conferences</h2></div><a href="#conferences">All conferences</a></div>
         <div class="card-grid">${conferences || '<div class="empty-state">No conferences yet.</div>'}</div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading"><div><p class="eyebrow">Separate collection</p><h2>Surveys</h2></div><a href="#surveys">Browse surveys</a></div>
+        <a class="nav-card survey-card" href="#surveys"><strong>${surveys.length} survey paper${surveys.length === 1 ? '' : 's'}</strong><span>Kept separate from the conference and year views.</span></a>
       </section>
 
       <section class="section">
@@ -186,6 +199,20 @@
       <div class="card-grid">${facets.conferences.map(c => `<a class="nav-card" href="#conference/${enc(c.value)}"><strong>${esc(c.value)}</strong><span>${esc(c.label || c.value)} · ${c.count} papers</span></a>`).join('') || '<div class="empty-state">No conferences yet.</div>'}</div>`;
   }
 
+  function renderSurveys() {
+    const surveys = sortPapers(state.data.surveys || []);
+    const groups = new Map();
+    surveys.forEach(p => { if (!groups.has(p.year)) groups.set(p.year, []); groups.get(p.year).push(p); });
+    const body = [...groups.entries()].sort(([a], [b]) => Number(b) - Number(a)).map(([year, list]) => `
+      <section class="subgroup">
+        <div class="subgroup-heading"><h3>${esc(year)}</h3><span class="group-count">${list.length} paper${list.length === 1 ? '' : 's'}</span></div>
+        ${paperList(sortPapers(list))}
+      </section>`).join('');
+    app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Surveys'}])}
+      <section class="page-intro"><p class="eyebrow">Separate collection</p><h1>Surveys</h1><p>Survey papers are listed separately and do not contribute to the Years or Conferences views or their counts.</p></section>
+      ${body || '<div class="empty-state">No survey papers yet. Add BibTeX files under <code>bib/survey/</code> or use <code>bib/survey.bib</code>.</div>'}`;
+  }
+
   function renderConference(conference) {
     const papers = state.data.papers.filter(p => p.conference === conference);
     const label = state.data.conferenceNames[conference] || conference;
@@ -209,14 +236,14 @@
   }
 
   function renderTag(tag) {
-    const papers = state.data.papers.filter(p => (p.tags || []).some(t => t.toLowerCase() === tag.toLowerCase()));
+    const papers = allRecords().filter(p => (p.tags || []).some(t => t.toLowerCase() === tag.toLowerCase()));
     app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Tags',href:'#tags'},{label:tag}])}
       <section class="page-intro"><p class="eyebrow">Tag</p><h1>${esc(tag)}</h1><p>${papers.length} matching papers.</p></section>
       ${paperList(sortPapers(papers))}`;
   }
 
   function searchableText(p) {
-    return [p.title, p.authorText, p.conference, p.conferenceName, p.year, p.key, ...(p.tags || [])].join(' ').toLowerCase();
+    return [p.title, p.authorText, p.conference, p.conferenceName, p.collection === 'survey' ? 'survey' : '', p.year, p.key, ...(p.tags || [])].join(' ').toLowerCase();
   }
 
   function renderSearch(params) {
@@ -229,7 +256,7 @@
     };
 
     app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Search'}])}
-      <section class="page-intro"><p class="eyebrow">Find papers</p><h1>Search</h1><p>Combine free-text search with year, conference, and tag filters.</p></section>
+      <section class="page-intro"><p class="eyebrow">Find papers</p><h1>Search</h1><p>Free-text and tag search include the separate survey collection. Year and conference filters apply only to conference papers.</p></section>
       <form class="search-panel" id="search-form">
         <input id="search-q" name="q" type="search" autocomplete="off" value="${esc(initial.q)}" placeholder="Title, author, tag, key…" aria-label="Search text">
         <select id="search-year" name="year" aria-label="Filter by year"><option value="">All years</option>${facets.years.map(x => `<option value="${esc(x.value)}" ${String(x.value)===initial.year?'selected':''}>${esc(x.value)}</option>`).join('')}</select>
@@ -249,10 +276,10 @@
       const year = (fd.get('year') || '').toString();
       const conference = (fd.get('conference') || '').toString();
       const tag = (fd.get('tag') || '').toString();
-      const filtered = sortPapers(state.data.papers.filter(p => {
+      const filtered = sortPapers(allRecords().filter(p => {
         if (q && !searchableText(p).includes(q)) return false;
-        if (year && String(p.year) !== year) return false;
-        if (conference && p.conference !== conference) return false;
+        if (year && (p.collection === 'survey' || String(p.year) !== year)) return false;
+        if (conference && (p.collection === 'survey' || p.conference !== conference)) return false;
         if (tag && !(p.tags || []).includes(tag)) return false;
         return true;
       }));
@@ -280,7 +307,7 @@
     app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'About'}])}
       <section class="page-intro"><p class="eyebrow">About</p><h1>Scope and maintenance</h1><p>This is a curated conference bibliography for research substantially related to parameterized complexity.</p></section>
       <div class="about-grid">
-        <article class="about-card"><h3>Scope</h3><p>Only papers accepted to international conferences are intended to be included. The site is designed for overviewing research activity and trends, not for replacing publisher pages, DBLP, or archival repositories.</p>${contact}</article>
+        <article class="about-card"><h3>Scope</h3><p>The main bibliography contains papers accepted to international conferences. Survey papers may be maintained in a separate collection; they are excluded from the Years and Conferences views and counts. The site is designed for overviewing research activity and trends, not for replacing publisher pages, DBLP, or archival repositories.</p>${contact}</article>
         <article class="about-card"><h3>Metadata</h3><p>Entries are generated from BibTeX files. Tags are curator-supplied through <code>keywords</code> or <code>tags</code>. Paper text and abstracts are not copied into this site by default.</p></article>
         <article class="about-card"><h3>Copyright and links</h3><p>The site stores bibliographic metadata and links to external paper pages. Copyright in linked papers remains with the respective authors and/or publishers. Reuse of third-party metadata should follow the terms of its original source.</p></article>
         <article class="about-card"><h3>LLM disclosure</h3><p>This website was developed with assistance from a generative AI / large language model. LLM-assisted collection or classification may also be used during maintenance, but maintainers should verify inclusion decisions and bibliographic metadata.</p></article>
@@ -291,7 +318,7 @@
   function bindCopyButtons() {
     document.querySelectorAll('.copy-bib').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const paper = state.data.papers.find(p => p.id === btn.dataset.bibId);
+        const paper = allRecords().find(p => p.id === btn.dataset.bibId);
         if (!paper?.bibtex) return;
         try {
           await navigator.clipboard.writeText(paper.bibtex);
@@ -315,6 +342,7 @@
       case 'year': renderYear(r.arg); break;
       case 'conferences': renderConferences(); break;
       case 'conference': renderConference(r.arg); break;
+      case 'surveys': renderSurveys(); break;
       case 'tags': renderTags(); break;
       case 'tag': renderTag(r.arg); break;
       case 'search': renderSearch(r.params); break;

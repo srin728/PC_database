@@ -7,6 +7,7 @@ A lightweight, mobile-friendly static bibliography for conference papers related
 - BibTeX is the source of truth.
 - Bibliography files are organized by conference and year.
 - Browse by **year**, **conference**, or **tag**.
+- Maintain survey papers as a **separate collection** that is excluded from year/conference views and counts.
 - Combined full-text/tag/year/conference search in the browser.
 - A small **News / latest updates** area on the home page.
 - Responsive layout for desktop and mobile.
@@ -23,8 +24,10 @@ A lightweight, mobile-friendly static bibliography for conference papers related
 │   ├── SODA/
 │   │   ├── SODA_2023.bib
 │   │   └── SODA_2024.bib
-│   └── ICALP/
-│       └── ICALP_2024.bib
+│   ├── ICALP/
+│   │   └── ICALP_2024.bib
+│   └── survey/
+│       └── survey.bib
 ├── data/
 │   ├── site.config.json
 │   ├── conferences.json
@@ -41,6 +44,8 @@ A lightweight, mobile-friendly static bibliography for conference papers related
 The generated `_site/` directory is intentionally ignored by Git. GitHub Actions rebuilds it automatically.
 
 ## Adding papers
+
+> **For routine bibliography updates, adding the `.bib` files is enough.** You do not need to edit or regenerate HTML, JSON, or other site files. Place each BibTeX file in the appropriate conference folder and push it to GitHub; the build process automatically updates the year, conference, tag, search, and recent-update views.
 
 Put each conference's BibTeX files under `bib/<CONFERENCE>/` with names such as:
 
@@ -67,6 +72,38 @@ A paper can be tagged with either `keywords` or `tags`:
 Comma and semicolon separators are both accepted for tags.
 
 The conference abbreviation is inferred from the parent folder. The year is taken from the BibTeX `year` field and falls back to the filename if necessary.
+
+### Survey papers
+
+Survey papers can be kept separately in either of the following forms:
+
+```text
+bib/survey/survey.bib
+```
+
+or
+
+```text
+bib/survey.bib
+```
+
+Entries from these survey files are shown on the dedicated **Surveys** page. They are **not included in the Years or Conferences views, counts, or filters**. They remain available through free-text and tag search.
+
+### DOI and URL normalization
+
+The build script normalizes common TeX escapes in DOI/URL fields. In particular, an escaped underscore such as
+
+```bibtex
+doi = {10.1007/978-3-031-38906-1\_8}
+```
+
+is linked as
+
+```text
+https://doi.org/10.1007/978-3-031-38906-1_8
+```
+
+The malformed exported form `...-1/\_8` is also normalized to `...-1_8`, so the `.bib` file does not need to be edited manually for this case.
 
 ## News and update history
 

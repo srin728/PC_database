@@ -160,6 +160,15 @@ SPECIAL = {
 }
 
 
+URL_ESCAPES = {
+    r'\_': '_',
+    r'\%': '%',
+    r'\#': '#',
+    r'\&': '&',
+    r'\$': '$',
+}
+
+
 def latex_to_text(value: str) -> str:
     s = value
     for token, repl in SPECIAL.items():
@@ -181,6 +190,52 @@ def latex_to_text(value: str) -> str:
     s = s.replace('{', '').replace('}', '')
     s = re.sub(r'\s+', ' ', s).strip()
     return s
+
+
+def normalize_doi(value: str) -> str:
+    r"""Return a DOI suffix suitable for display and https://doi.org links.
+
+    BibTeX exported from TeX-oriented sources sometimes escapes URL-safe
+    characters (especially ``_``) as ``\_``.  Some collections also contain
+    the malformed ``/\_`` sequence where the slash is not part of the DOI.
+    Normalize these cases here so maintainers do not need to edit the .bib
+    files by hand.
+    """
+    s = value.strip()
+    s = re.sub(r'^https?://(?:dx\.)?doi\.org/', '', s, flags=re.IGNORECASE)
+
+    # Known malformed form seen in exported BibTeX, e.g.
+    # 10.1007/978-3-031-38906-1/\_8 -> 10.1007/978-3-031-38906-1_8
+    s = s.replace(r'/\_', '_')
+    for token, repl in URL_ESCAPES.items():
+        s = s.replace(token, repl)
+
+    # Braces may be used only for TeX grouping in URL-like fields.
+    s = s.replace('{', '').replace('}', '').strip()
+    return s
+
+
+def normalize_url(value: str) -> str:
+    """Normalize TeX escapes in URL fields, including DOI URLs."""
+    s = value.strip()
+    if not s:
+        return ''
+
+    doi_match = re.match(r'^https?://(?:dx\.)?doi\.org/(.+)$', s, flags=re.IGNORECASE)
+    if doi_match:
+        doi = normalize_doi(doi_match.group(1))
+        return f"https://doi.org/{doi}" if doi else ''
+
+    for token, repl in URL_ESCAPES.items():
+        s = s.replace(token, repl)
+    return s.replace('{', '').replace('}', '').strip()
+
+
+def is_survey_bib(path: Path) -> bool:
+    """Recognize either bib/survey/*.bib or bib/survey.bib as survey data."""
+    return path.parent.name.casefold() == 'survey' or (
+        path.parent == BIB_DIR and path.stem.casefold() == 'survey'
+    )
 
 
 def split_authors(author_field: str) -> list[str]:
@@ -241,11 +296,14 @@ def build():
     news = load_json(DATA_DIR / 'news.json', [])
 
     papers = []
+    surveys = []
     source_updates = []
-    bib_files = sorted(BIB_DIR.glob('*/*.bib'))
+    bib_files = sorted({*BIB_DIR.glob('*/*.bib'), *(p for p in BIB_DIR.glob('*.bib') if is_survey_bib(p))})
 
     for path in bib_files:
-        conference = path.parent.name
+        is_survey = is_survey_bib(path)
+        conference = '' if is_survey else path.parent.name
+        collection = 'survey' if is_survey else 'conference'
         try:
             entries = parse_bibtex(path.read_text(encoding='utf-8-sig'))
         except Exception as exc:
@@ -258,9 +316,9 @@ def build():
             year_counts[year] += 1
             authors = split_authors(f.get('author', ''))
             tags = split_tags(f.get('tags', '') or f.get('keywords', ''))
-            paper_id = hashlib.sha1(f"{conference}\0{year}\0{entry['key']}".encode()).hexdigest()[:12]
-            doi = latex_to_text(f.get('doi', '')).replace('https://doi.org/', '').replace('http://doi.org/', '')
-            url = latex_to_text(f.get('url', '')).strip()
+            paper_id = hashlib.sha1(f"{collection}\0{conference}\0{year}\0{entry['key']}".encode()).hexdigest()[:12]
+            doi = normalize_doi(f.get('doi', ''))
+            url = normalize_url(f.get('url', ''))
             if not url and doi:
                 url = f"https://doi.org/{doi}"
             record = {
@@ -272,17 +330,18 @@ def build():
                 'authorText': ', '.join(authors),
                 'year': year,
                 'conference': conference,
-                'conferenceName': conference_names.get(conference, conference),
+                'conferenceName': conference_names.get(conference, conference) if conference else '',
+                'collection': collection,
                 'booktitle': latex_to_text(f.get('booktitle', '')),
                 'pages': latex_to_text(f.get('pages', '')),
                 'doi': doi,
                 'url': url,
                 'tags': tags,
-                'sourcePath': f"bib/{conference}/{path.name}",
+                'sourcePath': str(path.relative_to(ROOT)).replace('\\', '/'),
             }
             if config.get('includeRawBibTeX', False):
                 record['bibtex'] = entry['raw']
-            papers.append(record)
+            (surveys if is_survey else papers).append(record)
 
         changed = git_date(path)
         if year_counts:
@@ -290,6 +349,7 @@ def build():
                 source_updates.append({
                     'date': changed,
                     'conference': conference,
+                    'collection': collection,
                     'year': year,
                     'paperCount': count,
                     'file': str(path.relative_to(ROOT)).replace('\\', '/'),
@@ -298,12 +358,14 @@ def build():
             source_updates.append({
                 'date': changed,
                 'conference': conference,
+                'collection': collection,
                 'year': '',
                 'paperCount': 0,
                 'file': str(path.relative_to(ROOT)).replace('\\', '/'),
             })
 
     papers.sort(key=lambda p: (-(int(p['year']) if p['year'].isdigit() else -1), p['conference'].casefold(), p['title'].casefold()))
+    surveys.sort(key=lambda p: (-(int(p['year']) if p['year'].isdigit() else -1), p['title'].casefold()))
 
     year_counts = Counter(p['year'] for p in papers)
     year_conferences = defaultdict(set)
@@ -311,6 +373,9 @@ def build():
     tag_counts = Counter()
     for p in papers:
         year_conferences[p['year']].add(p['conference'])
+        for t in p['tags']:
+            tag_counts[t] += 1
+    for p in surveys:
         for t in p['tags']:
             tag_counts[t] += 1
 
@@ -334,6 +399,7 @@ def build():
         'sourceUpdates': sorted(source_updates, key=lambda x: x['date'], reverse=True),
         'facets': {
             'paperCount': len(papers),
+            'surveyCount': len(surveys),
             'yearCount': len(year_counts),
             'conferenceCount': len(conference_counts),
             'tagCount': len(tag_counts),
@@ -348,6 +414,7 @@ def build():
             'tags': [{'value': t, 'count': tag_counts[t]} for t in tags],
         },
         'papers': papers,
+        'surveys': surveys,
     }
 
     if OUT.exists():
@@ -359,7 +426,7 @@ def build():
         shutil.copytree(BIB_DIR, OUT / 'bib', dirs_exist_ok=True)
     # Prevent Jekyll processing when GitHub Pages receives the built directory.
     (OUT / '.nojekyll').write_text('', encoding='utf-8')
-    print(f"Built {len(papers)} papers from {len(bib_files)} BibTeX files into {OUT}")
+    print(f"Built {len(papers)} conference papers and {len(surveys)} survey papers from {len(bib_files)} BibTeX files into {OUT}")
 
 
 if __name__ == '__main__':

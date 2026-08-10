@@ -21,3 +21,17 @@ def test_nested_braces_and_tags():
     assert mod.latex_to_text(f['title']) == 'A Parameterized Result for $k$-Path'
     assert mod.split_tags(f['keywords']) == ['kernelization', 'FPT algorithms', 'graph algorithms']
     assert mod.split_authors(f['author'])[1] == 'Bob Example'
+
+
+def test_doi_normalization_removes_tex_escape():
+    assert mod.normalize_doi(r'10.1007/978-3-031-38906-1\_8') == '10.1007/978-3-031-38906-1_8'
+    assert mod.normalize_doi(r'10.1007/978-3-031-38906-1/\_8') == '10.1007/978-3-031-38906-1_8'
+    assert mod.normalize_doi(r'https://doi.org/10.1007/978-3-031-38906-1\_8') == '10.1007/978-3-031-38906-1_8'
+    assert mod.normalize_url(r'https://doi.org/10.1007/978-3-031-38906-1/\_8') == 'https://doi.org/10.1007/978-3-031-38906-1_8'
+
+
+def test_survey_paths_are_recognized():
+    assert mod.is_survey_bib(mod.BIB_DIR / 'survey' / 'survey.bib')
+    assert mod.is_survey_bib(mod.BIB_DIR / 'Survey' / 'surveys_2026.bib')
+    assert mod.is_survey_bib(mod.BIB_DIR / 'survey.bib')
+    assert not mod.is_survey_bib(mod.BIB_DIR / 'SODA' / 'SODA_2026.bib')

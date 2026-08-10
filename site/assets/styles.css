@@ -106,6 +106,7 @@ h3 { font-size: 18px; }
 .nav-card:hover { border-color: var(--secondary); transform: translateY(-1px); color: var(--ink); }
 .nav-card strong { display: block; }
 .nav-card span { display: block; margin-top: 5px; color: var(--muted); font-size: 13px; }
+.survey-card { display: block; }
 
 .news-list { display: grid; gap: 10px; }
 .news-item { padding: 15px 17px; }
