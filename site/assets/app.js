@@ -178,18 +178,41 @@
       <div class="card-grid">${facets.years.map(y => `<a class="nav-card" href="#year/${enc(y.value)}"><strong>${esc(y.value)}</strong><span>${y.count} papers · ${y.conferences} conferences</span></a>`).join('') || '<div class="empty-state">No years yet.</div>'}</div>`;
   }
 
+  function safeDomId(value = '') {
+    return String(value).replace(/[^A-Za-z0-9_-]+/g, '-');
+  }
+
+  function bindJumpLinks() {
+    document.querySelectorAll('[data-jump-target]').forEach(control => {
+      control.addEventListener('click', () => {
+        const target = document.getElementById(control.dataset.jumpTarget);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  }
+
   function renderYear(year) {
     const papers = state.data.papers.filter(p => String(p.year) === String(year));
     const groups = new Map();
     papers.forEach(p => { if (!groups.has(p.conference)) groups.set(p.conference, []); groups.get(p.conference).push(p); });
-    const body = [...groups.entries()].sort(([a],[b]) => a.localeCompare(b)).map(([conf, list]) => `
-      <section class="subgroup">
+    const entries = [...groups.entries()].sort(([a],[b]) => a.localeCompare(b));
+    const jumps = entries.map(([conf, list]) => {
+      const targetId = `year-${safeDomId(year)}-conference-${safeDomId(conf)}`;
+      return `<button type="button" class="jump-chip" data-jump-target="${esc(targetId)}"><strong>${esc(conf)}</strong><span>${list.length}</span></button>`;
+    }).join('');
+    const body = entries.map(([conf, list]) => {
+      const targetId = `year-${safeDomId(year)}-conference-${safeDomId(conf)}`;
+      return `
+      <section class="subgroup jump-target" id="${esc(targetId)}">
         <div class="subgroup-heading"><h3><a href="#conference/${enc(conf)}">${esc(conf)}</a></h3><span class="group-count">${list.length} papers</span></div>
         ${paperList(sortPapers(list))}
-      </section>`).join('');
+      </section>`;
+    }).join('');
     app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Years',href:'#years'},{label:year}])}
       <section class="page-intro"><p class="eyebrow">Year</p><h1>${esc(year)}</h1><p>${papers.length} conference papers in the database.</p></section>
+      ${jumps ? `<section class="jump-panel" aria-label="Jump to conference"><div class="jump-panel-heading"><h2>Jump to conference</h2><p>Conferences with at least one paper in ${esc(year)}.</p></div><div class="jump-chip-list">${jumps}</div></section>` : ''}
       ${body || '<div class="empty-state">No papers for this year.</div>'}`;
+    bindJumpLinks();
   }
 
   function renderConferences() {
@@ -218,14 +241,30 @@
     const label = state.data.conferenceNames[conference] || conference;
     const groups = new Map();
     papers.forEach(p => { if (!groups.has(p.year)) groups.set(p.year, []); groups.get(p.year).push(p); });
-    const body = [...groups.entries()].sort(([a],[b]) => Number(b)-Number(a)).map(([year, list]) => `
-      <section class="subgroup">
+    const entries = [...groups.entries()].sort(([a],[b]) => Number(b)-Number(a));
+    const maxCount = Math.max(1, ...entries.map(([, list]) => list.length));
+    const chart = entries.map(([year, list]) => {
+      const targetId = `conference-${safeDomId(conference)}-year-${safeDomId(year)}`;
+      const width = Math.max(7, Math.round((list.length / maxCount) * 100));
+      return `<button type="button" class="year-bar-row" data-jump-target="${esc(targetId)}" aria-label="Jump to ${esc(year)}, ${list.length} papers">
+        <span class="year-bar-label">${esc(year)}</span>
+        <span class="year-bar-track"><span class="year-bar-fill" style="width:${width}%"></span></span>
+        <span class="year-bar-count">${list.length}</span>
+      </button>`;
+    }).join('');
+    const body = entries.map(([year, list]) => {
+      const targetId = `conference-${safeDomId(conference)}-year-${safeDomId(year)}`;
+      return `
+      <section class="subgroup jump-target" id="${esc(targetId)}">
         <div class="subgroup-heading"><h3><a href="#year/${enc(year)}">${esc(year)}</a></h3><span class="group-count">${list.length} papers</span></div>
         ${paperList(sortPapers(list))}
-      </section>`).join('');
+      </section>`;
+    }).join('');
     app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Conferences',href:'#conferences'},{label:conference}])}
       <section class="page-intro"><p class="eyebrow">Conference</p><h1>${esc(conference)}</h1><p>${esc(label)} · ${papers.length} papers.</p></section>
+      ${chart ? `<section class="jump-panel conference-chart" aria-label="Papers by year"><div class="jump-panel-heading"><h2>Papers by year</h2><p>Click a bar to jump to that year.</p></div><div class="year-bar-chart">${chart}</div></section>` : ''}
       ${body || '<div class="empty-state">No papers for this conference.</div>'}`;
+    bindJumpLinks();
   }
 
   function renderTags() {
@@ -252,17 +291,22 @@
       const value = String(item.value);
       const checked = selected.has(value) ? ' checked' : '';
       const accessibleLabel = item.label && item.label !== value ? `${value}: ${item.label}` : value;
-      return `<label class="filter-option" title="${esc(accessibleLabel)}">
+      const searchable = `${value} ${item.label || ''}`.toLowerCase();
+      return `<label class="filter-option" title="${esc(accessibleLabel)}" data-filter-text="${esc(searchable)}">
         <input type="checkbox" name="${esc(name)}" value="${esc(value)}"${checked}>
         <span class="filter-option-text">${esc(value)}</span>
         <span class="filter-option-count">${esc(item.count)}</span>
       </label>`;
     }).join('');
 
-    return `<fieldset class="filter-group">
-      <legend>${esc(label)}</legend>
-      <div class="filter-options">${options || '<span class="filter-empty">No options</span>'}</div>
-    </fieldset>`;
+    return `<details class="filter-group" data-filter-group="${esc(name)}">
+      <summary><span>${esc(label)}</span><span class="filter-selected-count" data-selected-count="${esc(name)}">${selected.size ? `${selected.size} selected` : 'All'}</span></summary>
+      <div class="filter-group-body">
+        <input class="filter-search-input" type="search" autocomplete="off" placeholder="Search ${esc(label.toLowerCase())}…" aria-label="Search ${esc(label)} options" data-filter-search="${esc(name)}">
+        <div class="filter-options">${options || '<span class="filter-empty">No options</span>'}</div>
+        <div class="filter-no-match" hidden>No matching options.</div>
+      </div>
+    </details>`;
   }
 
   function renderSearch(params) {
@@ -321,9 +365,50 @@
       }
     }
 
-    form.addEventListener('input', () => update(true));
-    form.addEventListener('change', () => update(true));
-    document.getElementById('clear-search').addEventListener('click', () => { form.reset(); update(true); });
+    function updateSelectedCounts() {
+      ['conference', 'year', 'tag'].forEach(name => {
+        const count = form.querySelectorAll(`input[name="${name}"]:checked`).length;
+        const badge = form.querySelector(`[data-selected-count="${name}"]`);
+        if (badge) badge.textContent = count ? `${count} selected` : 'All';
+      });
+    }
+
+    function filterOptions(input) {
+      const groupName = input.dataset.filterSearch;
+      const group = form.querySelector(`[data-filter-group="${groupName}"]`);
+      if (!group) return;
+      const q = input.value.trim().toLowerCase();
+      let visible = 0;
+      group.querySelectorAll('.filter-option').forEach(option => {
+        const show = !q || (option.dataset.filterText || '').includes(q);
+        option.hidden = !show;
+        if (show) visible += 1;
+      });
+      const empty = group.querySelector('.filter-no-match');
+      if (empty) empty.hidden = visible !== 0;
+    }
+
+    form.querySelectorAll('.filter-search-input').forEach(input => {
+      input.addEventListener('input', e => {
+        e.stopPropagation();
+        filterOptions(input);
+      });
+    });
+    form.addEventListener('input', e => {
+      if (e.target.classList.contains('filter-search-input')) return;
+      update(true);
+    });
+    form.addEventListener('change', e => {
+      if (e.target.matches('input[type="checkbox"]')) updateSelectedCounts();
+      update(true);
+    });
+    document.getElementById('clear-search').addEventListener('click', () => {
+      form.reset();
+      form.querySelectorAll('.filter-search-input').forEach(input => filterOptions(input));
+      updateSelectedCounts();
+      update(true);
+    });
+    updateSelectedCounts();
     update(false);
   }
 
