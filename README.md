@@ -105,6 +105,14 @@ https://doi.org/10.1007/978-3-031-38906-1_8
 
 The malformed exported form `...-1/\_8` is also normalized to `...-1_8`, so the `.bib` file does not need to be edited manually for this case.
 
+### DBLP author-name suffixes
+
+DBLP sometimes appends a four-digit disambiguation identifier to an author name, for example `Lu Liu 0030`. The site removes this trailing four-digit identifier from the displayed author name, so it is shown as `Lu Liu`. The original BibTeX source entry is left unchanged.
+
+### Per-paper BibTeX downloads
+
+Each paper card's **Source .bib** link downloads a generated `.bib` file containing only that paper's single BibTeX entry. It no longer downloads the whole conference/year source file. The original conference-level files under `bib/` remain the source of truth.
+
 ## News and update history
 
 Edit `data/news.json` for editorial announcements:
@@ -144,7 +152,7 @@ Edit `data/site.config.json`:
 
 A GitHub Issues URL is a convenient choice for `contactUrl` because visitors can report omissions without publishing a personal email address.
 
-Set `includeRawBibTeX` to `true` if you want every paper card to have a “Copy BibTeX” button. Keeping it `false` makes `publications.json` smaller; each card still links to its source `.bib` file.
+Set `includeRawBibTeX` to `true` if you want every paper card to have a “Copy BibTeX” button. Keeping it `false` makes `publications.json` smaller; each card still provides a `Source .bib` download containing only that paper's single BibTeX entry.
 
 ## Theme colors
 

@@ -238,6 +238,16 @@ def is_survey_bib(path: Path) -> bool:
     )
 
 
+def normalize_dblp_author_name(name: str) -> str:
+    """Remove DBLP homonym-disambiguation suffixes from displayed names.
+
+    DBLP may append a four-digit identifier to an author's name, for example
+    ``Lu Liu 0030``.  It is useful inside DBLP's data model but should not be
+    shown as part of the human-readable author name on this site.
+    """
+    return re.sub(r'\s+\d{4}$', '', name).strip()
+
+
 def split_authors(author_field: str) -> list[str]:
     # Adequate for normal BibTeX author lists; corporate authors in braces remain one item.
     raw = re.split(r'\s+and\s+', author_field.strip()) if author_field else []
@@ -248,8 +258,15 @@ def split_authors(author_field: str) -> list[str]:
             last, first = [x.strip() for x in name.split(',', 1)]
             if first and last:
                 name = f"{first} {last}"
+        name = normalize_dblp_author_name(name)
         result.append(name)
     return [x for x in result if x]
+
+
+def safe_bib_filename(key: str) -> str:
+    """Return a portable download filename for one BibTeX entry."""
+    name = re.sub(r'[^A-Za-z0-9._-]+', '_', key).strip('._-')
+    return f"{name or 'paper'}.bib"
 
 
 def split_tags(value: str) -> list[str]:
@@ -298,6 +315,7 @@ def build():
     papers = []
     surveys = []
     source_updates = []
+    entry_downloads = []
     bib_files = sorted({*BIB_DIR.glob('*/*.bib'), *(p for p in BIB_DIR.glob('*.bib') if is_survey_bib(p))})
 
     for path in bib_files:
@@ -337,8 +355,10 @@ def build():
                 'doi': doi,
                 'url': url,
                 'tags': tags,
-                'sourcePath': str(path.relative_to(ROOT)).replace('\\', '/'),
+                'sourcePath': f'bib-entry/{paper_id}.bib',
+                'sourceFileName': safe_bib_filename(entry['key']),
             }
+            entry_downloads.append((paper_id, entry['raw']))
             if config.get('includeRawBibTeX', False):
                 record['bibtex'] = entry['raw']
             (surveys if is_survey else papers).append(record)
@@ -422,6 +442,16 @@ def build():
     shutil.copytree(SITE_DIR, OUT)
     (OUT / 'data').mkdir(parents=True, exist_ok=True)
     (OUT / 'data' / 'publications.json').write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
+
+    # Generate one downloadable BibTeX file per paper.  The public paper card
+    # links here instead of linking to the conference-wide source .bib file.
+    entry_dir = OUT / 'bib-entry'
+    entry_dir.mkdir(parents=True, exist_ok=True)
+    for paper_id, raw_bibtex in entry_downloads:
+        (entry_dir / f'{paper_id}.bib').write_text(raw_bibtex.rstrip() + '\n', encoding='utf-8')
+
+    # Keep the original source files in the built site for provenance/archive
+    # purposes, but paper cards no longer download these multi-entry files.
     if BIB_DIR.exists():
         shutil.copytree(BIB_DIR, OUT / 'bib', dirs_exist_ok=True)
     # Prevent Jekyll processing when GitHub Pages receives the built directory.

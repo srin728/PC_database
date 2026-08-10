@@ -35,3 +35,15 @@ def test_survey_paths_are_recognized():
     assert mod.is_survey_bib(mod.BIB_DIR / 'Survey' / 'surveys_2026.bib')
     assert mod.is_survey_bib(mod.BIB_DIR / 'survey.bib')
     assert not mod.is_survey_bib(mod.BIB_DIR / 'SODA' / 'SODA_2026.bib')
+
+
+
+def test_dblp_author_suffix_is_removed_from_display():
+    assert mod.split_authors('Lu Liu 0030 and Alice Example') == ['Lu Liu', 'Alice Example']
+    assert mod.split_authors('Liu 0030, Lu') == ['Lu Liu']
+    assert mod.normalize_dblp_author_name('Author 123') == 'Author 123'
+
+
+def test_safe_bib_filename():
+    assert mod.safe_bib_filename('Liu2026') == 'Liu2026.bib'
+    assert mod.safe_bib_filename('Key:with/slash') == 'Key_with_slash.bib'

@@ -61,7 +61,7 @@
     const title = primary ? `<a href="${esc(primary)}" target="_blank" rel="noopener noreferrer">${esc(p.title)}</a>` : esc(p.title);
     const tags = (p.tags || []).map(t => `<a class="tag" href="#tag/${enc(t)}">${esc(t)}</a>`).join('');
     const doi = p.doi ? externalLink(`https://doi.org/${p.doi}`, 'DOI') : '';
-    const source = p.sourcePath ? `<a href="${esc(p.sourcePath)}" target="_blank" rel="noopener noreferrer">Source .bib</a>` : '';
+    const source = p.sourcePath ? `<a href="${esc(p.sourcePath)}" download="${esc(p.sourceFileName || 'paper.bib')}">Source .bib</a>` : '';
     const raw = p.bibtex ? `<button type="button" class="copy-bib" data-bib-id="${esc(p.id)}">Copy BibTeX</button>` : '';
     const actions = [doi, source, raw].filter(Boolean).join('');
     const bibliographicMeta = p.collection === 'survey'
