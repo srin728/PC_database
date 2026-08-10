@@ -246,22 +246,46 @@
     return [p.title, p.authorText, p.conference, p.conferenceName, p.collection === 'survey' ? 'survey' : '', p.year, p.key, ...(p.tags || [])].join(' ').toLowerCase();
   }
 
+  function filterCheckboxGroup(name, label, items, selectedValues) {
+    const selected = new Set(selectedValues.map(String));
+    const options = items.map(item => {
+      const value = String(item.value);
+      const checked = selected.has(value) ? ' checked' : '';
+      const accessibleLabel = item.label && item.label !== value ? `${value}: ${item.label}` : value;
+      return `<label class="filter-option" title="${esc(accessibleLabel)}">
+        <input type="checkbox" name="${esc(name)}" value="${esc(value)}"${checked}>
+        <span class="filter-option-text">${esc(value)}</span>
+        <span class="filter-option-count">${esc(item.count)}</span>
+      </label>`;
+    }).join('');
+
+    return `<fieldset class="filter-group">
+      <legend>${esc(label)}</legend>
+      <div class="filter-options">${options || '<span class="filter-empty">No options</span>'}</div>
+    </fieldset>`;
+  }
+
   function renderSearch(params) {
     const { facets } = state.data;
     const initial = {
       q: params.get('q') || '',
-      year: params.get('year') || '',
-      conference: params.get('conference') || '',
-      tag: params.get('tag') || ''
+      years: params.getAll('year'),
+      conferences: params.getAll('conference'),
+      tags: params.getAll('tag')
     };
 
     app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Search'}])}
-      <section class="page-intro"><p class="eyebrow">Find papers</p><h1>Search</h1><p>Free-text and tag search include the separate survey collection. Year and conference filters apply only to conference papers.</p></section>
+      <section class="page-intro"><p class="eyebrow">Find papers</p><h1>Search</h1><p>Free-text and tag search include the separate survey collection. Year and conference filters apply only to conference papers. Within each checkbox group, selections are combined with OR; different groups are combined with AND.</p></section>
       <form class="search-panel" id="search-form">
-        <input id="search-q" name="q" type="search" autocomplete="off" value="${esc(initial.q)}" placeholder="Title, author, tag, key…" aria-label="Search text">
-        <select id="search-year" name="year" aria-label="Filter by year"><option value="">All years</option>${facets.years.map(x => `<option value="${esc(x.value)}" ${String(x.value)===initial.year?'selected':''}>${esc(x.value)}</option>`).join('')}</select>
-        <select id="search-conference" name="conference" aria-label="Filter by conference"><option value="">All conferences</option>${facets.conferences.map(x => `<option value="${esc(x.value)}" ${x.value===initial.conference?'selected':''}>${esc(x.value)}</option>`).join('')}</select>
-        <select id="search-tag" name="tag" aria-label="Filter by tag"><option value="">All tags</option>${facets.tags.map(x => `<option value="${esc(x.value)}" ${x.value===initial.tag?'selected':''}>${esc(x.value)}</option>`).join('')}</select>
+        <div class="search-query-row">
+          <label class="search-query-label" for="search-q">Search text</label>
+          <input id="search-q" name="q" type="search" autocomplete="off" value="${esc(initial.q)}" placeholder="Title, author, tag, key…">
+        </div>
+        <div class="filter-grid">
+          ${filterCheckboxGroup('conference', 'Conference', facets.conferences, initial.conferences)}
+          ${filterCheckboxGroup('year', 'Year', facets.years, initial.years)}
+          ${filterCheckboxGroup('tag', 'Tag', facets.tags, initial.tags)}
+        </div>
       </form>
       <div class="results-bar"><span id="result-count"></span><button class="clear-button" id="clear-search" type="button">Clear filters</button></div>
       <div id="search-results"></div>`;
@@ -272,15 +296,16 @@
 
     function update(pushHash = true) {
       const fd = new FormData(form);
-      const q = (fd.get('q') || '').toString().trim().toLowerCase();
-      const year = (fd.get('year') || '').toString();
-      const conference = (fd.get('conference') || '').toString();
-      const tag = (fd.get('tag') || '').toString();
+      const rawQ = (fd.get('q') || '').toString().trim();
+      const q = rawQ.toLowerCase();
+      const years = fd.getAll('year').map(String);
+      const conferences = fd.getAll('conference').map(String);
+      const tags = fd.getAll('tag').map(String);
       const filtered = sortPapers(allRecords().filter(p => {
         if (q && !searchableText(p).includes(q)) return false;
-        if (year && (p.collection === 'survey' || String(p.year) !== year)) return false;
-        if (conference && (p.collection === 'survey' || p.conference !== conference)) return false;
-        if (tag && !(p.tags || []).includes(tag)) return false;
+        if (years.length && (p.collection === 'survey' || !years.includes(String(p.year)))) return false;
+        if (conferences.length && (p.collection === 'survey' || !conferences.includes(p.conference))) return false;
+        if (tags.length && !tags.some(tag => (p.tags || []).includes(tag))) return false;
         return true;
       }));
       resultCount.textContent = `${filtered.length} result${filtered.length === 1 ? '' : 's'}`;
@@ -288,15 +313,16 @@
       bindCopyButtons();
       if (pushHash) {
         const out = new URLSearchParams();
-        if (fd.get('q')) out.set('q', fd.get('q'));
-        if (year) out.set('year', year);
-        if (conference) out.set('conference', conference);
-        if (tag) out.set('tag', tag);
+        if (rawQ) out.set('q', rawQ);
+        years.forEach(year => out.append('year', year));
+        conferences.forEach(conference => out.append('conference', conference));
+        tags.forEach(tag => out.append('tag', tag));
         history.replaceState(null, '', `#search${out.toString() ? `?${out}` : ''}`);
       }
     }
 
     form.addEventListener('input', () => update(true));
+    form.addEventListener('change', () => update(true));
     document.getElementById('clear-search').addEventListener('click', () => { form.reset(); update(true); });
     update(false);
   }
