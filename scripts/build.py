@@ -166,6 +166,9 @@ URL_ESCAPES = {
     r'\#': '#',
     r'\&': '&',
     r'\$': '$',
+    r'\(': '(',
+    r'\)': ')',
+    r'\:': ':',
 }
 
 
@@ -215,12 +218,38 @@ def normalize_doi(value: str) -> str:
     return s
 
 
-def normalize_url(value: str) -> str:
-    """Normalize TeX escapes in URL fields, including DOI URLs."""
+def extract_markdown_link_target(value: str) -> str:
+    """Return the URL from a Markdown-style ``[label](target)`` value.
+
+    A few hand-maintained BibTeX files contain Markdown copied from rendered
+    text instead of a plain URL.  Keep accepting those files so the title link
+    does not become a literal ``[https://...](https://...)`` href.
+    """
     s = value.strip()
+    if not s.startswith('['):
+        return s
+
+    sep = s.find('](')
+    if sep <= 1 or not s.endswith(')'):
+        return s
+
+    label = s[1:sep].strip()
+    target = s[sep + 2:-1].strip()
+    return target or label
+
+
+def normalize_url(value: str) -> str:
+    r"""Normalize URL fields copied from TeX, DBLP, or Markdown.
+
+    Supported cleanup includes TeX escapes such as ``\_`` and ``\(``, and
+    accidental Markdown link syntax such as ``[https://a](https://a)``.
+    """
+    s = extract_markdown_link_target(value)
     if not s:
         return ''
 
+    # Detect DOI URLs before the generic TeX-unescape pass.  This preserves
+    # normalize_doi's special repair for the malformed ``/\_`` sequence.
     doi_match = re.match(r'^https?://(?:dx\.)?doi\.org/(.+)$', s, flags=re.IGNORECASE)
     if doi_match:
         doi = normalize_doi(doi_match.group(1))

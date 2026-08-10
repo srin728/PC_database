@@ -28,6 +28,9 @@ def test_doi_normalization_removes_tex_escape():
     assert mod.normalize_doi(r'10.1007/978-3-031-38906-1/\_8') == '10.1007/978-3-031-38906-1_8'
     assert mod.normalize_doi(r'https://doi.org/10.1007/978-3-031-38906-1\_8') == '10.1007/978-3-031-38906-1_8'
     assert mod.normalize_url(r'https://doi.org/10.1007/978-3-031-38906-1/\_8') == 'https://doi.org/10.1007/978-3-031-38906-1_8'
+    assert mod.normalize_url(
+        r'[https://doi.org/10.1016/S0012-365X(00)00199-0](https://doi.org/10.1016/S0012-365X\(00\)00199-0)'
+    ) == 'https://doi.org/10.1016/S0012-365X(00)00199-0'
 
 
 def test_survey_paths_are_recognized():
