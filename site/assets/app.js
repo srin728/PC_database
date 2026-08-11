@@ -15,6 +15,49 @@
   backToTop.innerHTML = '<span aria-hidden="true">↑</span>';
   document.body.appendChild(backToTop);
 
+  // Keep the button in the visible bottom-right corner even while a mobile
+  // browser is pinch-zoomed or the visual viewport is panned. We do not
+  // disable zoom; instead we compensate for the difference between the
+  // layout viewport and the visual viewport when the API is available.
+  let topButtonFrame = 0;
+  function positionBackToTop() {
+    if (topButtonFrame) return;
+    topButtonFrame = requestAnimationFrame(() => {
+      topButtonFrame = 0;
+      const vv = window.visualViewport;
+      if (!vv || window.matchMedia('(min-width: 561px)').matches) {
+        backToTop.style.removeProperty('--top-button-right');
+        backToTop.style.removeProperty('--top-button-bottom');
+        return;
+      }
+
+      // At normal scale, native fixed positioning is preferable because it
+      // also honors safe-area insets. Only compensate when pinch zoom/pan
+      // creates a visual viewport smaller or offset from the layout viewport.
+      if (Math.abs(vv.scale - 1) < 0.01 && Math.abs(vv.offsetLeft) < 0.5 && Math.abs(vv.offsetTop) < 0.5) {
+        backToTop.style.removeProperty('--top-button-right');
+        backToTop.style.removeProperty('--top-button-bottom');
+        return;
+      }
+
+      const layoutWidth = document.documentElement.clientWidth;
+      const layoutHeight = document.documentElement.clientHeight;
+      const margin = 12;
+      const rightGap = Math.max(margin, layoutWidth - (vv.offsetLeft + vv.width) + margin);
+      const bottomGap = Math.max(margin, layoutHeight - (vv.offsetTop + vv.height) + margin);
+      backToTop.style.setProperty('--top-button-right', `${rightGap}px`);
+      backToTop.style.setProperty('--top-button-bottom', `${bottomGap}px`);
+    });
+  }
+
+  positionBackToTop();
+  window.addEventListener('resize', positionBackToTop, { passive: true });
+  window.addEventListener('orientationchange', positionBackToTop, { passive: true });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', positionBackToTop, { passive: true });
+    window.visualViewport.addEventListener('scroll', positionBackToTop, { passive: true });
+  }
+
   const state = { data: null };
 
   const esc = (value = '') => String(value)
