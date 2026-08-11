@@ -127,7 +127,7 @@ Edit `data/news.json` for editorial announcements:
 ]
 ```
 
-The build script also records the latest Git commit date of each `.bib` file and shows recent bibliography-file updates on the home page.
+The build script derives **Latest updates** from Git commits that changed files under `bib/`. Updates are grouped by commit and summarize added/removed BibTeX entries or metadata changes, so a single commit that updates many conference files appears as one maintenance event rather than many misleading file-level entries. If Git history is unavailable, the build falls back to per-file modification dates. The supplied GitHub Actions workflow uses `fetch-depth: 0` so the full update history is available during Pages builds.
 
 ## Conference display names
 

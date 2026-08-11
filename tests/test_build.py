@@ -50,3 +50,10 @@ def test_dblp_author_suffix_is_removed_from_display():
 def test_safe_bib_filename():
     assert mod.safe_bib_filename('Liu2026') == 'Liu2026.bib'
     assert mod.safe_bib_filename('Key:with/slash') == 'Key_with_slash.bib'
+
+
+def test_first_page_number():
+    assert mod.first_page_number('3--27') == 3
+    assert mod.first_page_number('123-130') == 123
+    assert mod.first_page_number('S41--S50') == 41
+    assert mod.first_page_number('') is None

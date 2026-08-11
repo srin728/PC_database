@@ -261,3 +261,50 @@ code { background: #eef2f7; padding: 2px 5px; border-radius: 5px; }
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; transition: none !important; }
 }
+
+/* Collapsible year/conference groups */
+.collapsible-subgroup {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.collapsible-subgroup > summary {
+  list-style: none;
+}
+.collapsible-subgroup > summary::-webkit-details-marker { display: none; }
+.collapsible-heading {
+  position: relative;
+  margin: 0;
+  padding: 11px 42px 11px 14px;
+  background: rgba(122,153,207,.07);
+  cursor: pointer;
+  user-select: none;
+}
+.collapsible-heading::after {
+  content: '▾';
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--primary-dark);
+  font-size: 13px;
+  transition: transform .15s ease;
+}
+.collapsible-subgroup:not([open]) .collapsible-heading::after {
+  transform: translateY(-50%) rotate(-90deg);
+}
+.collapsible-heading:hover { background: rgba(122,153,207,.13); }
+.collapsible-heading .subgroup-title { color: var(--primary-dark); font-weight: 800; font-size: 1.05rem; }
+.collapsible-heading .subgroup-title a { position: relative; z-index: 1; }
+.collapsible-content { padding: 12px 14px 14px; }
+.collapsible-subgroup:not([open]) .collapsible-content { display: none; }
+
+@media (max-width: 560px) {
+  .collapsible-heading { padding: 10px 38px 10px 12px; }
+  .collapsible-content { padding: 10px 11px 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collapsible-heading::after { transition: none !important; }
+}

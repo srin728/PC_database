@@ -54,6 +54,20 @@
     );
   }
 
+  function sortPapersByPage(papers) {
+    return [...papers].sort((a, b) => {
+      const aHasPage = a.pageStart !== null && a.pageStart !== undefined && Number.isFinite(Number(a.pageStart));
+      const bHasPage = b.pageStart !== null && b.pageStart !== undefined && Number.isFinite(Number(b.pageStart));
+      if (aHasPage !== bHasPage) return aHasPage ? -1 : 1;
+      if (aHasPage && Number(a.pageStart) !== Number(b.pageStart)) return Number(a.pageStart) - Number(b.pageStart);
+      const byFile = String(a.sourceBib || '').localeCompare(String(b.sourceBib || ''));
+      if (byFile) return byFile;
+      const bySource = Number(a.sourceOrder ?? Number.MAX_SAFE_INTEGER) - Number(b.sourceOrder ?? Number.MAX_SAFE_INTEGER);
+      if (bySource) return bySource;
+      return a.title.localeCompare(b.title);
+    });
+  }
+
   function allRecords() {
     return [...(state.data.papers || []), ...(state.data.surveys || [])];
   }
@@ -117,11 +131,11 @@
       ...(news || []).map(n => ({...n, kind: 'news'})),
       ...(sourceUpdates || []).map(u => ({
         date: u.date,
-        title: u.collection === 'survey'
+        title: u.title || (u.collection === 'survey'
           ? `Survey bibliography update${u.year ? `: ${u.year}` : ''}`
-          : `Bibliography update: ${u.conference} ${u.year || ''}`.trim(),
-        text: `${u.paperCount} entr${u.paperCount === 1 ? 'y' : 'ies'} currently in ${u.file}.`,
-        kind: 'source'
+          : `Bibliography update: ${u.conference} ${u.year || ''}`.trim()),
+        text: u.text || `${u.paperCount} entr${u.paperCount === 1 ? 'y' : 'ies'} currently in ${u.file}.`,
+        kind: u.kind || 'source'
       }))
     ].sort((a,b) => String(b.date).localeCompare(String(a.date))).slice(0, site.homeRecentUpdates || 8);
 
@@ -194,7 +208,10 @@
     document.querySelectorAll('[data-jump-target]').forEach(control => {
       control.addEventListener('click', () => {
         const target = document.getElementById(control.dataset.jumpTarget);
-        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (target) {
+          if (target instanceof HTMLDetailsElement) target.open = true;
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       });
     });
   }
@@ -211,10 +228,10 @@
     const body = entries.map(([conf, list]) => {
       const targetId = `year-${safeDomId(year)}-conference-${safeDomId(conf)}`;
       return `
-      <section class="subgroup jump-target" id="${esc(targetId)}">
-        <div class="subgroup-heading"><h3><a href="#conference/${enc(conf)}">${esc(conf)}</a></h3><span class="group-count">${list.length} papers</span></div>
-        ${paperList(sortPapers(list))}
-      </section>`;
+      <details class="subgroup collapsible-subgroup jump-target" id="${esc(targetId)}" open>
+        <summary class="subgroup-heading collapsible-heading"><span class="subgroup-title"><a href="#conference/${enc(conf)}">${esc(conf)}</a></span><span class="group-count">${list.length} papers</span></summary>
+        <div class="collapsible-content">${paperList(sortPapers(list))}</div>
+      </details>`;
     }).join('');
     app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Years',href:'#years'},{label:year}])}
       <section class="page-intro"><p class="eyebrow">Year</p><h1>${esc(year)}</h1><p>${papers.length} conference papers in the database.</p></section>
@@ -263,10 +280,10 @@
     const body = entries.map(([year, list]) => {
       const targetId = `conference-${safeDomId(conference)}-year-${safeDomId(year)}`;
       return `
-      <section class="subgroup jump-target" id="${esc(targetId)}">
-        <div class="subgroup-heading"><h3><a href="#year/${enc(year)}">${esc(year)}</a></h3><span class="group-count">${list.length} papers</span></div>
-        ${paperList(sortPapers(list))}
-      </section>`;
+      <details class="subgroup collapsible-subgroup jump-target" id="${esc(targetId)}" open>
+        <summary class="subgroup-heading collapsible-heading"><span class="subgroup-title"><a href="#year/${enc(year)}">${esc(year)}</a></span><span class="group-count">${list.length} papers</span></summary>
+        <div class="collapsible-content">${paperList(sortPapersByPage(list))}</div>
+      </details>`;
     }).join('');
     app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Conferences',href:'#conferences'},{label:conference}])}
       <section class="page-intro"><p class="eyebrow">Conference</p><h1>${esc(conference)}</h1><p>${esc(label)} · ${papers.length} papers.</p></section>

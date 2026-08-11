@@ -312,6 +312,141 @@ def split_tags(value: str) -> list[str]:
     return out
 
 
+def first_page_number(value: str) -> int | None:
+    """Extract the first numeric page component for proceedings-order sorting."""
+    if not value:
+        return None
+    text = latex_to_text(value)
+    match = re.search(r'\d+', text)
+    return int(match.group(0)) if match else None
+
+
+def git_show_text(revision: str, path: str) -> str | None:
+    """Read one repository file at a Git revision; return None if absent."""
+    try:
+        cp = subprocess.run(
+            ['git', '-C', str(ROOT), 'show', f'{revision}:{path}'],
+            check=False, capture_output=True, text=True, timeout=10,
+        )
+        return cp.stdout if cp.returncode == 0 else None
+    except Exception:
+        return None
+
+
+def bib_entry_map(text: str | None) -> dict[str, str]:
+    if text is None:
+        return {}
+    try:
+        return {entry['key']: entry['raw'].strip() for entry in parse_bibtex(text)}
+    except Exception:
+        return {}
+
+
+def describe_bib_path(path_text: str) -> str:
+    """Return a concise collection label such as ``SODA 2025``."""
+    path = Path(path_text)
+    parts = path.parts
+    if len(parts) >= 2 and parts[0].casefold() == 'bib':
+        if (len(parts) >= 2 and parts[1].casefold() == 'survey') or path.stem.casefold() == 'survey':
+            m = re.search(r'(19|20)\d{2}', path.name)
+            return f"Surveys {m.group(0)}" if m else 'Surveys'
+        conference = parts[1] if len(parts) >= 3 else path.stem
+        m = re.search(r'(19|20)\d{2}', path.name)
+        return f"{conference} {m.group(0)}" if m else conference
+    return path.stem
+
+
+def git_bib_update_events(limit: int = 30) -> list[dict]:
+    """Build recent bibliography updates from Git commits touching ``bib/``.
+
+    File mtimes are unreliable in CI/checkouts.  Git history records the actual
+    maintenance events, so the home-page update feed is derived from commits
+    whenever a full repository history is available.  Entry-key and raw-entry
+    comparisons provide useful added/removed/metadata-change counts.
+    """
+    try:
+        probe = subprocess.run(
+            ['git', '-C', str(ROOT), 'rev-parse', '--is-inside-work-tree'],
+            check=False, capture_output=True, text=True, timeout=5,
+        )
+        if probe.returncode != 0 or probe.stdout.strip() != 'true':
+            return []
+        cp = subprocess.run(
+            ['git', '-C', str(ROOT), 'log', '--date=short', '--format=%H%x09%ad%x09%s', '--', 'bib'],
+            check=False, capture_output=True, text=True, timeout=15,
+        )
+        if cp.returncode != 0:
+            return []
+    except Exception:
+        return []
+
+    events = []
+    for line in cp.stdout.splitlines():
+        if len(events) >= limit:
+            break
+        parts = line.split('\t', 2)
+        if len(parts) < 2:
+            continue
+        commit, date = parts[:2]
+        subject = parts[2].strip() if len(parts) > 2 else ''
+        try:
+            changed = subprocess.run(
+                ['git', '-C', str(ROOT), 'diff-tree', '--root', '--no-commit-id', '--name-only', '-r', commit, '--', 'bib'],
+                check=False, capture_output=True, text=True, timeout=10,
+            )
+            files = [x.strip() for x in changed.stdout.splitlines() if x.strip().lower().endswith('.bib')]
+            if not files:
+                continue
+            parents = subprocess.run(
+                ['git', '-C', str(ROOT), 'rev-list', '--parents', '-n', '1', commit],
+                check=False, capture_output=True, text=True, timeout=5,
+            ).stdout.strip().split()
+            parent = parents[1] if len(parents) > 1 else None
+        except Exception:
+            continue
+
+        added = removed = modified = 0
+        labels = []
+        for file_path in files:
+            labels.append(describe_bib_path(file_path))
+            new_entries = bib_entry_map(git_show_text(commit, file_path))
+            old_entries = bib_entry_map(git_show_text(parent, file_path)) if parent else {}
+            new_keys = set(new_entries)
+            old_keys = set(old_entries)
+            added += len(new_keys - old_keys)
+            removed += len(old_keys - new_keys)
+            modified += sum(new_entries[k] != old_entries[k] for k in new_keys & old_keys)
+
+        labels = list(dict.fromkeys(labels))
+        if len(labels) == 1:
+            title = f"Bibliography update: {labels[0]}"
+        else:
+            title = f"Bibliography update: {len(labels)} collections"
+
+        changes = []
+        if added:
+            changes.append(f"+{added} entr{'y' if added == 1 else 'ies'}")
+        if removed:
+            changes.append(f"-{removed} entr{'y' if removed == 1 else 'ies'}")
+        if modified:
+            changes.append(f"{modified} metadata change{'s' if modified != 1 else ''}")
+        if not changes:
+            changes.append(f"{len(files)} BibTeX file{'s' if len(files) != 1 else ''} changed")
+
+        shown_labels = ', '.join(labels[:6]) + (f" +{len(labels)-6} more" if len(labels) > 6 else '')
+        text_parts = ['; '.join(changes), shown_labels]
+        if subject:
+            text_parts.append(subject)
+        events.append({
+            'date': date,
+            'title': title,
+            'text': ' · '.join(x for x in text_parts if x),
+            'commit': commit[:7],
+            'kind': 'git',
+        })
+    return events
+
+
 def git_date(path: Path) -> str:
     try:
         rel = path.relative_to(ROOT)
@@ -357,7 +492,7 @@ def build():
             raise RuntimeError(f"Failed to parse {path.relative_to(ROOT)}: {exc}") from exc
 
         year_counts = Counter()
-        for entry in entries:
+        for entry_index, entry in enumerate(entries):
             f = entry['fields']
             year = infer_year(path, f)
             year_counts[year] += 1
@@ -381,6 +516,9 @@ def build():
                 'collection': collection,
                 'booktitle': latex_to_text(f.get('booktitle', '')),
                 'pages': latex_to_text(f.get('pages', '')),
+                'pageStart': first_page_number(f.get('pages', '')),
+                'sourceOrder': entry_index,
+                'sourceBib': str(path.relative_to(ROOT)).replace('\\', '/'),
                 'doi': doi,
                 'url': url,
                 'tags': tags,
@@ -445,7 +583,8 @@ def build():
         },
         'conferenceNames': conference_names,
         'news': news,
-        'sourceUpdates': sorted(source_updates, key=lambda x: x['date'], reverse=True),
+        'sourceUpdates': git_bib_update_events(max(20, int(config.get('homeRecentUpdates', 8)) * 4))
+            or sorted(source_updates, key=lambda x: (x['date'], x.get('file', '')), reverse=True),
         'facets': {
             'paperCount': len(papers),
             'surveyCount': len(surveys),
