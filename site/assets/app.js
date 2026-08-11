@@ -126,8 +126,9 @@
   }
 
   function paperPrimaryUrl(p) {
-    if (p.url) return p.url;
+    if (p.primaryUrl) return p.primaryUrl;
     if (p.doi) return `https://doi.org/${p.doi}`;
+    if (p.url) return p.url;
     return '';
   }
 

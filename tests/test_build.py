@@ -57,3 +57,9 @@ def test_first_page_number():
     assert mod.first_page_number('123-130') == 123
     assert mod.first_page_number('S41--S50') == 41
     assert mod.first_page_number('') is None
+
+
+def test_preferred_paper_url_prioritizes_doi():
+    assert mod.preferred_paper_url('10.1000/example', 'https://publisher.example/paper') == 'https://doi.org/10.1000/example'
+    assert mod.preferred_paper_url('', 'https://publisher.example/paper') == 'https://publisher.example/paper'
+    assert mod.preferred_paper_url('', '') == ''

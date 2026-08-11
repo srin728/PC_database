@@ -260,6 +260,11 @@ def normalize_url(value: str) -> str:
     return s.replace('{', '').replace('}', '').strip()
 
 
+
+def preferred_paper_url(doi: str, url: str) -> str:
+    """Return the preferred external paper URL, prioritizing DOI over url."""
+    return f"https://doi.org/{doi}" if doi else url
+
 def is_survey_bib(path: Path) -> bool:
     """Recognize either bib/survey/*.bib or bib/survey.bib as survey data."""
     return path.parent.name.casefold() == 'survey' or (
@@ -501,8 +506,7 @@ def build():
             paper_id = hashlib.sha1(f"{collection}\0{conference}\0{year}\0{entry['key']}".encode()).hexdigest()[:12]
             doi = normalize_doi(f.get('doi', ''))
             url = normalize_url(f.get('url', ''))
-            if not url and doi:
-                url = f"https://doi.org/{doi}"
+            primary_url = preferred_paper_url(doi, url)
             record = {
                 'id': paper_id,
                 'key': entry['key'],
@@ -521,6 +525,7 @@ def build():
                 'sourceBib': str(path.relative_to(ROOT)).replace('\\', '/'),
                 'doi': doi,
                 'url': url,
+                'primaryUrl': primary_url,
                 'tags': tags,
                 'sourcePath': f'bib-entry/{paper_id}.bib',
                 'sourceFileName': safe_bib_filename(entry['key']),
