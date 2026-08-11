@@ -126,7 +126,9 @@
   }
 
   function paperPrimaryUrl(p) {
-    if (p.primaryUrl) return p.primaryUrl;
+    // DOI is the canonical title link whenever it exists. Do not let a
+    // legacy/stale primaryUrl (for example, a DBLP record URL from an older
+    // generated publications.json) override the DOI.
     if (p.doi) return `https://doi.org/${p.doi}`;
     if (p.url) return p.url;
     return '';

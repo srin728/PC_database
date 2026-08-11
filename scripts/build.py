@@ -476,6 +476,48 @@ def infer_year(path: Path, fields: dict) -> str:
     return m.group(0).strip('_') if m else 'Unknown'
 
 
+
+def add_cache_busting(out_dir: Path) -> None:
+    """Version generated JSON and static assets using content hashes.
+
+    GitHub Pages and browsers may cache ``assets/app.js`` or
+    ``data/publications.json`` across deployments.  If those two files come
+    from different builds, legacy link metadata can override newer behavior.
+    Add content-hash query strings in the generated site so each deployment
+    loads a self-consistent set of files without disabling caching entirely.
+    """
+    data_path = out_dir / 'data' / 'publications.json'
+    app_path = out_dir / 'assets' / 'app.js'
+    css_path = out_dir / 'assets' / 'styles.css'
+
+    if data_path.exists() and app_path.exists():
+        data_hash = hashlib.sha256(data_path.read_bytes()).hexdigest()[:12]
+        app_text = app_path.read_text(encoding='utf-8')
+        app_text = re.sub(
+            r"data/publications\.json(?:\?v=[A-Za-z0-9_-]+)?",
+            f"data/publications.json?v={data_hash}",
+            app_text,
+        )
+        app_path.write_text(app_text, encoding='utf-8')
+
+    versions = {}
+    for rel, path in [('assets/app.js', app_path), ('assets/styles.css', css_path)]:
+        if path.exists():
+            versions[rel] = hashlib.sha256(path.read_bytes()).hexdigest()[:12]
+
+    for page_name in ('index.html', '404.html'):
+        page = out_dir / page_name
+        if not page.exists():
+            continue
+        html = page.read_text(encoding='utf-8')
+        for rel, digest in versions.items():
+            html = re.sub(
+                re.escape(rel) + r"(?:\?v=[A-Za-z0-9_-]+)?",
+                f"{rel}?v={digest}",
+                html,
+            )
+        page.write_text(html, encoding='utf-8')
+
 def build():
     config = load_json(DATA_DIR / 'site.config.json', {})
     conference_names = load_json(DATA_DIR / 'conferences.json', {})
@@ -627,6 +669,10 @@ def build():
     # purposes, but paper cards no longer download these multi-entry files.
     if BIB_DIR.exists():
         shutil.copytree(BIB_DIR, OUT / 'bib', dirs_exist_ok=True)
+    # Prevent stale GitHub Pages/browser caches from mixing generated data and
+    # frontend code from different deployments.
+    add_cache_busting(OUT)
+
     # Prevent Jekyll processing when GitHub Pages receives the built directory.
     (OUT / '.nojekyll').write_text('', encoding='utf-8')
     print(f"Built {len(papers)} conference papers and {len(surveys)} survey papers from {len(bib_files)} BibTeX files into {OUT}")
