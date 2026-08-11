@@ -89,26 +89,36 @@
     });
   }
 
+  function comparePageOrder(a, b) {
+    const aHasPage = a.pageStart !== null && a.pageStart !== undefined && Number.isFinite(Number(a.pageStart));
+    const bHasPage = b.pageStart !== null && b.pageStart !== undefined && Number.isFinite(Number(b.pageStart));
+    if (aHasPage !== bHasPage) return aHasPage ? -1 : 1;
+    if (aHasPage && Number(a.pageStart) !== Number(b.pageStart)) return Number(a.pageStart) - Number(b.pageStart);
+
+    // If page metadata is absent or tied, preserve the source BibTeX order as
+    // much as possible. This also gives deterministic ordering for entries
+    // without a pages field.
+    const byFile = String(a.sourceBib || '').localeCompare(String(b.sourceBib || ''));
+    if (byFile) return byFile;
+    const bySource = Number(a.sourceOrder ?? Number.MAX_SAFE_INTEGER) - Number(b.sourceOrder ?? Number.MAX_SAFE_INTEGER);
+    if (bySource) return bySource;
+    return a.title.localeCompare(b.title);
+  }
+
   function sortPapers(papers) {
-    return [...papers].sort((a, b) =>
-      Number(b.year) - Number(a.year) ||
-      a.conference.localeCompare(b.conference) ||
-      a.title.localeCompare(b.title)
-    );
+    return [...papers].sort((a, b) => {
+      const byYear = Number(b.year) - Number(a.year);
+      if (byYear) return byYear;
+      const byCollection = (a.collection === 'survey' ? 1 : 0) - (b.collection === 'survey' ? 1 : 0);
+      if (byCollection) return byCollection;
+      const byConference = String(a.conference || '').localeCompare(String(b.conference || ''));
+      if (byConference) return byConference;
+      return comparePageOrder(a, b);
+    });
   }
 
   function sortPapersByPage(papers) {
-    return [...papers].sort((a, b) => {
-      const aHasPage = a.pageStart !== null && a.pageStart !== undefined && Number.isFinite(Number(a.pageStart));
-      const bHasPage = b.pageStart !== null && b.pageStart !== undefined && Number.isFinite(Number(b.pageStart));
-      if (aHasPage !== bHasPage) return aHasPage ? -1 : 1;
-      if (aHasPage && Number(a.pageStart) !== Number(b.pageStart)) return Number(a.pageStart) - Number(b.pageStart);
-      const byFile = String(a.sourceBib || '').localeCompare(String(b.sourceBib || ''));
-      if (byFile) return byFile;
-      const bySource = Number(a.sourceOrder ?? Number.MAX_SAFE_INTEGER) - Number(b.sourceOrder ?? Number.MAX_SAFE_INTEGER);
-      if (bySource) return bySource;
-      return a.title.localeCompare(b.title);
-    });
+    return [...papers].sort(comparePageOrder);
   }
 
   function allRecords() {
@@ -273,7 +283,7 @@
       return `
       <details class="subgroup collapsible-subgroup jump-target" id="${esc(targetId)}" open>
         <summary class="subgroup-heading collapsible-heading"><span class="subgroup-title"><a href="#conference/${enc(conf)}">${esc(conf)}</a></span><span class="group-count">${list.length} papers</span></summary>
-        <div class="collapsible-content">${paperList(sortPapers(list))}</div>
+        <div class="collapsible-content">${paperList(sortPapersByPage(list))}</div>
       </details>`;
     }).join('');
     app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Years',href:'#years'},{label:year}])}
