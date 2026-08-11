@@ -36,8 +36,20 @@
   "FCT": "International Symposium on Fundamentals of Computation Theory",
   "FUN": "International Conference on Fun with Algorithms",
   "ISCO": "International Symposium on Combinatorial Optimization",
-  "IJCAI": "International Joint Conferences on Artificial Intelligence",
+  "COCOA": "International Conference on Combinatorial Optimization and Applications",
+  "CSR": "International Computer Science Symposium in Russia",
+  "DNA": "International Conference on DNA Computing and Molecular Programming",
+  "ECAI": "European Conference on Artificial Intelligence",
+  "GD": "International Symposium on Graph Drawing and Network Visualization",
+  "ICML": "International Conference on Machine Learning",
+  "LATA": "International Conference on Language and Automata Theory and Applications",
+  "LICS": "ACM/IEEE Symposium on Logic in Computer Science",
+  "NeurIPS": "Conference on Neural Information Processing Systems",
+  "RECOMB": "International Conference on Research in Computational Molecular Biology",
+  "SAGT": "International Symposium on Algorithmic Game Theory",
+  "SAT": "International Conference on Theory and Applications of Satisfiability Testing",
+  "WINE": "International Conference on Web and Internet Economics",
+  "IJCAI": "International Joint Conference on Artificial Intelligence",
   "TAMC": "Annual Conference on Theory and Applications of Models of Computation",
-  "CALDAM": "Annual International Conference on Algorithms and Discrete Applied Mathematics",
-  "COCOA": "International Conference on Combinatorial Optimization and Applications"
+  "CALDAM": "Annual International Conference on Algorithms and Discrete Applied Mathematics"
 }

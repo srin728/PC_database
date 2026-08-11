@@ -6,6 +6,7 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -412,8 +413,23 @@ def git_bib_update_events(limit: int = 30) -> list[dict]:
 
         added = removed = modified = 0
         labels = []
+        targets = []
         for file_path in files:
-            labels.append(describe_bib_path(file_path))
+            label = describe_bib_path(file_path)
+            labels.append(label)
+            path_obj = Path(file_path)
+            parts_obj = path_obj.parts
+            if len(parts_obj) >= 2 and parts_obj[0].casefold() == 'bib':
+                if parts_obj[1].casefold() == 'survey' or path_obj.stem.casefold() == 'survey':
+                    targets.append({'collection': 'survey', 'label': label})
+                elif len(parts_obj) >= 3:
+                    year_match = re.search(r'(19|20)\d{2}', path_obj.name)
+                    targets.append({
+                        'collection': 'conference',
+                        'conference': parts_obj[1],
+                        'year': year_match.group(0) if year_match else '',
+                        'label': label,
+                    })
             new_entries = bib_entry_map(git_show_text(commit, file_path))
             old_entries = bib_entry_map(git_show_text(parent, file_path)) if parent else {}
             new_keys = set(new_entries)
@@ -423,6 +439,7 @@ def git_bib_update_events(limit: int = 30) -> list[dict]:
             modified += sum(new_entries[k] != old_entries[k] for k in new_keys & old_keys)
 
         labels = list(dict.fromkeys(labels))
+        targets = list({(t.get('collection',''), t.get('conference',''), t.get('year','')): t for t in targets}.values())
         if len(labels) == 1:
             title = f"Bibliography update: {labels[0]}"
         else:
@@ -448,6 +465,7 @@ def git_bib_update_events(limit: int = 30) -> list[dict]:
             'text': ' · '.join(x for x in text_parts if x),
             'commit': commit[:7],
             'kind': 'git',
+            'targets': targets,
         })
     return events
 
@@ -476,67 +494,114 @@ def infer_year(path: Path, fields: dict) -> str:
     return m.group(0).strip('_') if m else 'Unknown'
 
 
+COVERAGE_STATUSES = {'complete', 'partial', 'planned'}
 
-def add_cache_busting(out_dir: Path) -> None:
-    """Version generated JSON and static assets using content hashes.
 
-    GitHub Pages and browsers may cache ``assets/app.js`` or
-    ``data/publications.json`` across deployments.  If those two files come
-    from different builds, legacy link metadata can override newer behavior.
-    Add content-hash query strings in the generated site so each deployment
-    loads a self-consistent set of files without disabling caching entirely.
-    """
-    data_path = out_dir / 'data' / 'publications.json'
-    app_path = out_dir / 'assets' / 'app.js'
-    css_path = out_dir / 'assets' / 'styles.css'
+def parse_bib_file(path: Path) -> list[dict]:
+    """Parse one BibTeX file and report a useful line on malformed input."""
+    text = path.read_text(encoding='utf-8-sig')
+    try:
+        return parse_bibtex(text)
+    except Exception as exc:
+        offset = None
+        match = re.search(r'offset\s+(\d+)', str(exc))
+        if match:
+            offset = int(match.group(1))
+        if offset is not None:
+            line_no = text.count('\n', 0, min(offset, len(text))) + 1
+            line_text = text.splitlines()[line_no - 1].strip() if text.splitlines() else ''
+            detail = f"entry starting at line {line_no}"
+            if line_text:
+                detail += f": {line_text[:180]}"
+        else:
+            detail = str(exc)
+        raise RuntimeError(f"Failed to parse {path.relative_to(ROOT)} ({detail})") from exc
 
-    if data_path.exists() and app_path.exists():
-        data_hash = hashlib.sha256(data_path.read_bytes()).hexdigest()[:12]
-        app_text = app_path.read_text(encoding='utf-8')
-        app_text = re.sub(
-            r"data/publications\.json(?:\?v=[A-Za-z0-9_-]+)?",
-            f"data/publications.json?v={data_hash}",
-            app_text,
-        )
-        app_path.write_text(app_text, encoding='utf-8')
 
-    versions = {}
-    for rel, path in [('assets/app.js', app_path), ('assets/styles.css', css_path)]:
-        if path.exists():
-            versions[rel] = hashlib.sha256(path.read_bytes()).hexdigest()[:12]
+def normal_bib_files() -> list[Path]:
+    return sorted(p for p in BIB_DIR.glob('*/*.bib') if not is_survey_bib(p))
 
-    for page_name in ('index.html', '404.html'):
-        page = out_dir / page_name
-        if not page.exists():
+
+def all_bib_files() -> list[Path]:
+    return sorted({*BIB_DIR.glob('*/*.bib'), *(p for p in BIB_DIR.glob('*.bib') if is_survey_bib(p))})
+
+
+def missing_conference_definitions(conferences, conference_names: dict) -> list[str]:
+    return sorted({str(c) for c in conferences if c and c not in conference_names}, key=str.casefold)
+
+
+def normalize_coverage_status(value) -> str | None:
+    status = str(value or '').strip().casefold().replace('-', '_').replace(' ', '_')
+    aliases = {
+        'done': 'complete', 'surveyed': 'complete', 'completed': 'complete',
+        'in_progress': 'partial', 'incomplete': 'partial',
+        'todo': 'planned', 'not_surveyed': 'planned', 'not_yet_surveyed': 'planned',
+    }
+    status = aliases.get(status, status)
+    return status if status in COVERAGE_STATUSES else None
+
+
+def apply_coverage_overrides(coverage: dict[tuple[str, str], dict], overrides: dict) -> None:
+    """Apply data/coverage.json overrides using {conference: {year: status}}."""
+    if not isinstance(overrides, dict):
+        return
+    for conference, years in overrides.items():
+        if not isinstance(years, dict):
             continue
-        html = page.read_text(encoding='utf-8')
-        for rel, digest in versions.items():
-            html = re.sub(
-                re.escape(rel) + r"(?:\?v=[A-Za-z0-9_-]+)?",
-                f"{rel}?v={digest}",
-                html,
-            )
-        page.write_text(html, encoding='utf-8')
+        for year, raw_status in years.items():
+            status = normalize_coverage_status(raw_status)
+            if not status:
+                print(f"WARNING: ignoring unknown coverage status {raw_status!r} for {conference} {year}", file=sys.stderr)
+                continue
+            key = (str(conference), str(year))
+            item = coverage.setdefault(key, {'conference': str(conference), 'year': str(year), 'source': 'override'})
+            item['status'] = status
+            item['source'] = 'override' if item.get('source') != 'bib' else 'bib+override'
+
+
+def coverage_sort_key(item: dict):
+    year = str(item.get('year', ''))
+    return (str(item.get('conference', '')).casefold(), -(int(year) if year.isdigit() else -1), year)
+
+
+def version_output_assets(out_dir: Path) -> None:
+    """Add content hashes to CSS/JS references so Pages serves fresh code."""
+    index = out_dir / 'index.html'
+    if not index.exists():
+        return
+    html = index.read_text(encoding='utf-8')
+    for relative in ('assets/styles.css', 'assets/app.js'):
+        asset = out_dir / relative
+        if not asset.exists():
+            continue
+        digest = hashlib.sha256(asset.read_bytes()).hexdigest()[:12]
+        html = html.replace(relative, f'{relative}?v={digest}')
+    index.write_text(html, encoding='utf-8')
+
 
 def build():
     config = load_json(DATA_DIR / 'site.config.json', {})
     conference_names = load_json(DATA_DIR / 'conferences.json', {})
     news = load_json(DATA_DIR / 'news.json', [])
+    coverage_overrides = load_json(DATA_DIR / 'coverage.json', {})
 
     papers = []
     surveys = []
     source_updates = []
     entry_downloads = []
-    bib_files = sorted({*BIB_DIR.glob('*/*.bib'), *(p for p in BIB_DIR.glob('*.bib') if is_survey_bib(p))})
+    coverage = {}
+    bib_files = all_bib_files()
+    conference_folders = sorted({p.parent.name for p in bib_files if not is_survey_bib(p)}, key=str.casefold)
+    defined_sources = set(conference_folders) | (set(coverage_overrides) if isinstance(coverage_overrides, dict) else set())
+    missing_conferences = missing_conference_definitions(defined_sources, conference_names)
+    if missing_conferences:
+        print('WARNING: conference folders missing from data/conferences.json: ' + ', '.join(missing_conferences), file=sys.stderr)
 
     for path in bib_files:
         is_survey = is_survey_bib(path)
         conference = '' if is_survey else path.parent.name
         collection = 'survey' if is_survey else 'conference'
-        try:
-            entries = parse_bibtex(path.read_text(encoding='utf-8-sig'))
-        except Exception as exc:
-            raise RuntimeError(f"Failed to parse {path.relative_to(ROOT)}: {exc}") from exc
+        entries = parse_bib_file(path)
 
         year_counts = Counter()
         for entry_index, entry in enumerate(entries):
@@ -544,7 +609,7 @@ def build():
             year = infer_year(path, f)
             year_counts[year] += 1
             authors = split_authors(f.get('author', ''))
-            tags = split_tags(f.get('tags', '') or f.get('keywords', ''))
+            tags = split_tags(';'.join(x for x in (f.get('tags', ''), f.get('keywords', '')) if x))
             paper_id = hashlib.sha1(f"{collection}\0{conference}\0{year}\0{entry['key']}".encode()).hexdigest()[:12]
             doi = normalize_doi(f.get('doi', ''))
             url = normalize_url(f.get('url', ''))
@@ -577,6 +642,20 @@ def build():
                 record['bibtex'] = entry['raw']
             (surveys if is_survey else papers).append(record)
 
+        if not is_survey:
+            covered_years = set(year_counts)
+            if not covered_years:
+                inferred = infer_year(path, {})
+                if inferred != 'Unknown':
+                    covered_years.add(inferred)
+            for covered_year in covered_years:
+                coverage[(conference, covered_year)] = {
+                    'conference': conference,
+                    'year': covered_year,
+                    'status': 'complete',
+                    'source': 'bib',
+                }
+
         changed = git_date(path)
         if year_counts:
             for year, count in year_counts.items():
@@ -598,6 +677,8 @@ def build():
                 'file': str(path.relative_to(ROOT)).replace('\\', '/'),
             })
 
+    apply_coverage_overrides(coverage, coverage_overrides)
+
     papers.sort(key=lambda p: (-(int(p['year']) if p['year'].isdigit() else -1), p['conference'].casefold(), p['title'].casefold()))
     surveys.sort(key=lambda p: (-(int(p['year']) if p['year'].isdigit() else -1), p['title'].casefold()))
 
@@ -613,9 +694,35 @@ def build():
         for t in p['tags']:
             tag_counts[t] += 1
 
-    years = sorted(year_counts, key=lambda y: (y.isdigit(), int(y) if y.isdigit() else -1), reverse=True)
-    conferences = sorted(conference_counts, key=lambda c: c.casefold())
+    coverage_year_conferences = defaultdict(set)
+    coverage_conference_years = defaultdict(set)
+    complete_by_year = Counter()
+    partial_by_year = Counter()
+    complete_by_conference = Counter()
+    partial_by_conference = Counter()
+    for (conference, year), item in coverage.items():
+        status = item.get('status', 'complete')
+        coverage_year_conferences[year].add(conference)
+        coverage_conference_years[conference].add(year)
+        if status == 'complete':
+            complete_by_year[year] += 1
+            complete_by_conference[conference] += 1
+        elif status == 'partial':
+            partial_by_year[year] += 1
+            partial_by_conference[conference] += 1
+
+    all_year_values = set(year_counts) | set(coverage_year_conferences)
+    all_conference_values = set(conference_counts) | set(coverage_conference_years)
+    years = sorted(all_year_values, key=lambda y: (str(y).isdigit(), int(y) if str(y).isdigit() else -1), reverse=True)
+    conferences = sorted(all_conference_values, key=lambda c: c.casefold())
     tags = sorted(tag_counts, key=lambda t: (-tag_counts[t], t.casefold()))
+
+    coverage_records = []
+    for (conference, year), item in coverage.items():
+        record = dict(item)
+        record['count'] = sum(1 for p in papers if p['conference'] == conference and p['year'] == year)
+        coverage_records.append(record)
+    coverage_records.sort(key=coverage_sort_key)
 
     payload = {
         'generatedAt': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC'),
@@ -632,18 +739,23 @@ def build():
         'news': news,
         'sourceUpdates': git_bib_update_events(max(20, int(config.get('homeRecentUpdates', 8)) * 4))
             or sorted(source_updates, key=lambda x: (x['date'], x.get('file', '')), reverse=True),
+        'coverage': coverage_records,
         'facets': {
             'paperCount': len(papers),
             'surveyCount': len(surveys),
-            'yearCount': len(year_counts),
-            'conferenceCount': len(conference_counts),
+            'yearCount': len(years),
+            'conferenceCount': len(conferences),
             'tagCount': len(tag_counts),
             'years': [
-                {'value': y, 'count': year_counts[y], 'conferences': len(year_conferences[y])}
+                {'value': y, 'count': year_counts[y], 'conferences': len(year_conferences[y]),
+                 'coveredConferences': len(coverage_year_conferences[y]),
+                 'complete': complete_by_year[y], 'partial': partial_by_year[y]}
                 for y in years
             ],
             'conferences': [
-                {'value': c, 'label': conference_names.get(c, c), 'count': conference_counts[c]}
+                {'value': c, 'label': conference_names.get(c, c), 'count': conference_counts[c],
+                 'coveredYears': len(coverage_conference_years[c]),
+                 'complete': complete_by_conference[c], 'partial': partial_by_conference[c]}
                 for c in conferences
             ],
             'tags': [{'value': t, 'count': tag_counts[t]} for t in tags],
@@ -655,6 +767,7 @@ def build():
     if OUT.exists():
         shutil.rmtree(OUT)
     shutil.copytree(SITE_DIR, OUT)
+    version_output_assets(OUT)
     (OUT / 'data').mkdir(parents=True, exist_ok=True)
     (OUT / 'data' / 'publications.json').write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
 
@@ -669,10 +782,6 @@ def build():
     # purposes, but paper cards no longer download these multi-entry files.
     if BIB_DIR.exists():
         shutil.copytree(BIB_DIR, OUT / 'bib', dirs_exist_ok=True)
-    # Prevent stale GitHub Pages/browser caches from mixing generated data and
-    # frontend code from different deployments.
-    add_cache_busting(OUT)
-
     # Prevent Jekyll processing when GitHub Pages receives the built directory.
     (OUT / '.nojekyll').write_text('', encoding='utf-8')
     print(f"Built {len(papers)} conference papers and {len(surveys)} survey papers from {len(bib_files)} BibTeX files into {OUT}")

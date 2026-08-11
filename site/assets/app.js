@@ -125,10 +125,77 @@
     return [...(state.data.papers || []), ...(state.data.surveys || [])];
   }
 
+  function coverageRecords() {
+    return state.data.coverage || [];
+  }
+
+  function coverageRecord(conference, year) {
+    return coverageRecords().find(item => item.conference === conference && String(item.year) === String(year));
+  }
+
+  function coverageStatusLabel(status) {
+    return ({ complete: 'Surveyed', partial: 'Partial', planned: 'Planned' })[status] || '';
+  }
+
+  function coverageBadge(status) {
+    const label = coverageStatusLabel(status);
+    return label ? `<span class="coverage-badge coverage-${esc(status)}">${esc(label)}</span>` : '';
+  }
+
+  function coverageEmptyMessage(status) {
+    if (status === 'complete') return 'Surveyed; no included papers are recorded for this conference-year.';
+    if (status === 'partial') return 'This conference-year is marked as partially surveyed.';
+    if (status === 'planned') return 'This conference-year is listed for future surveying.';
+    return 'No included papers are recorded for this conference-year.';
+  }
+
+  function updateTargetLinks(update) {
+    let targets = Array.isArray(update.targets) ? update.targets : [];
+    if (!targets.length && update.collection === 'survey') {
+      targets = [{ collection: 'survey', label: 'Surveys' }];
+    } else if (!targets.length && update.conference) {
+      targets = [{
+        collection: 'conference', conference: update.conference, year: update.year || '',
+        label: `${update.conference}${update.year ? ` ${update.year}` : ''}`
+      }];
+    }
+    const seen = new Set();
+    const links = targets.map(target => {
+      const key = `${target.collection || ''}|${target.conference || ''}|${target.year || ''}`;
+      if (seen.has(key)) return '';
+      seen.add(key);
+      if (target.collection === 'survey') {
+        return `<a class="update-target" href="#surveys">${esc(target.label || 'Surveys')}</a>`;
+      }
+      if (!target.conference) return '';
+      const href = `#conference/${enc(target.conference)}${target.year ? `?jump=${enc(target.year)}` : ''}`;
+      const label = target.label || `${target.conference}${target.year ? ` ${target.year}` : ''}`;
+      return `<a class="update-target" href="${href}">${esc(label)}</a>`;
+    }).filter(Boolean);
+    return links.length ? `<div class="update-target-list">${links.join('')}</div>` : '';
+  }
+
+  function sortSearchPapers(papers, mode) {
+    const list = [...papers];
+    if (mode === 'title') {
+      return list.sort((a, b) => a.title.localeCompare(b.title) || Number(b.year) - Number(a.year) || comparePageOrder(a, b));
+    }
+    if (mode === 'year-asc') {
+      return list.sort((a, b) => Number(a.year) - Number(b.year)
+        || String(a.conference || '').localeCompare(String(b.conference || ''))
+        || comparePageOrder(a, b));
+    }
+    if (mode === 'conference') {
+      return list.sort((a, b) => String(a.conference || 'Survey').localeCompare(String(b.conference || 'Survey'))
+        || Number(b.year) - Number(a.year)
+        || comparePageOrder(a, b));
+    }
+    return sortPapers(list);
+  }
+
   function paperPrimaryUrl(p) {
-    // DOI is the canonical title link whenever it exists. Do not let a
-    // legacy/stale primaryUrl (for example, a DBLP record URL from an older
-    // generated publications.json) override the DOI.
+    // DOI is the canonical title link whenever it is available.  Do not let a
+    // stale generated primaryUrl (for example a DBLP URL) override it.
     if (p.doi) return `https://doi.org/${p.doi}`;
     if (p.url) return p.url;
     return '';
@@ -191,12 +258,14 @@
           ? `Survey bibliography update${u.year ? `: ${u.year}` : ''}`
           : `Bibliography update: ${u.conference} ${u.year || ''}`.trim()),
         text: u.text || `${u.paperCount} entr${u.paperCount === 1 ? 'y' : 'ies'} currently in ${u.file}.`,
-        kind: u.kind || 'source'
+        kind: u.kind || 'source',
+        targets: u.targets || [] ,
+        collection: u.collection || '', conference: u.conference || '', year: u.year || ''
       }))
     ].sort((a,b) => String(b.date).localeCompare(String(a.date))).slice(0, site.homeRecentUpdates || 8);
 
-    const years = facets.years.slice(0, 6).map(y => `<a class="nav-card" href="#year/${enc(y.value)}"><strong>${esc(y.value)}</strong><span>${y.count} papers</span></a>`).join('');
-    const conferences = facets.conferences.slice(0, 8).map(c => `<a class="nav-card" href="#conference/${enc(c.value)}"><strong>${esc(c.value)}</strong><span>${esc(c.label || c.value)} · ${c.count} papers</span></a>`).join('');
+    const years = facets.years.slice(0, 6).map(y => `<a class="nav-card" href="#year/${enc(y.value)}"><strong>${esc(y.value)}</strong><span>${y.count} papers · ${y.coveredConferences ?? y.conferences} covered conferences</span></a>`).join('');
+    const conferences = facets.conferences.slice(0, 8).map(c => `<a class="nav-card" href="#conference/${enc(c.value)}"><strong>${esc(c.value)}</strong><span>${esc(c.label || c.value)} · ${c.count} papers · ${c.coveredYears || 0} covered years</span></a>`).join('');
 
     app.innerHTML = `
       <section class="hero">
@@ -234,11 +303,11 @@
 
       <section class="section">
         <div class="section-heading"><div><p class="eyebrow">News</p><h2>Latest updates</h2></div></div>
-        <div class="news-list">${updates.length ? updates.map(u => `<article class="news-item"><time>${esc(u.date)}</time><h3>${esc(u.title)}</h3><p>${esc(u.text || '')}</p></article>`).join('') : '<div class="empty-state">No updates yet.</div>'}</div>
+        <div class="news-list">${updates.length ? updates.map(u => `<article class="news-item"><time>${esc(u.date)}</time><h3>${esc(u.title)}</h3><p>${esc(u.text || '')}</p>${updateTargetLinks(u)}</article>`).join('') : '<div class="empty-state">No updates yet.</div>'}</div>
       </section>
 
       <section class="section">
-        <div class="section-heading"><div><p class="eyebrow">Newest bibliography entries</p><h2>Recent papers</h2></div><a href="#search">Open search</a></div>
+        <div class="section-heading"><div><p class="eyebrow">By publication year</p><h2>Papers from recent years</h2></div><a href="#search">Open search</a></div>
         ${paperList(latestPapers)}
       </section>`;
 
@@ -253,7 +322,7 @@
     const { facets } = state.data;
     app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Years'}])}
       <section class="page-intro"><p class="eyebrow">Browse</p><h1>By year</h1><p>Select a year to see papers grouped by conference.</p></section>
-      <div class="card-grid">${facets.years.map(y => `<a class="nav-card" href="#year/${enc(y.value)}"><strong>${esc(y.value)}</strong><span>${y.count} papers · ${y.conferences} conferences</span></a>`).join('') || '<div class="empty-state">No years yet.</div>'}</div>`;
+      <div class="card-grid">${facets.years.map(y => `<a class="nav-card" href="#year/${enc(y.value)}"><strong>${esc(y.value)}</strong><span>${y.count} papers · ${y.coveredConferences ?? y.conferences} covered conferences</span></a>`).join('') || '<div class="empty-state">No years yet.</div>'}</div>`;
   }
 
   function safeDomId(value = '') {
@@ -274,25 +343,30 @@
 
   function renderYear(year) {
     const papers = state.data.papers.filter(p => String(p.year) === String(year));
+    const coverage = coverageRecords().filter(item => String(item.year) === String(year));
     const groups = new Map();
+    coverage.forEach(item => { if (!groups.has(item.conference)) groups.set(item.conference, []); });
     papers.forEach(p => { if (!groups.has(p.conference)) groups.set(p.conference, []); groups.get(p.conference).push(p); });
     const entries = [...groups.entries()].sort(([a],[b]) => a.localeCompare(b));
-    const jumps = entries.map(([conf, list]) => {
+    const jumps = entries.filter(([, list]) => list.length > 0).map(([conf, list]) => {
       const targetId = `year-${safeDomId(year)}-conference-${safeDomId(conf)}`;
       return `<button type="button" class="jump-chip" data-jump-target="${esc(targetId)}"><strong>${esc(conf)}</strong><span>${list.length}</span></button>`;
     }).join('');
     const body = entries.map(([conf, list]) => {
       const targetId = `year-${safeDomId(year)}-conference-${safeDomId(conf)}`;
+      const coverageItem = coverageRecord(conf, year);
+      const status = coverageItem?.status || '';
       return `
       <details class="subgroup collapsible-subgroup jump-target" id="${esc(targetId)}" open>
-        <summary class="subgroup-heading collapsible-heading"><span class="subgroup-title"><a href="#conference/${enc(conf)}">${esc(conf)}</a></span><span class="group-count">${list.length} papers</span></summary>
-        <div class="collapsible-content">${paperList(sortPapersByPage(list))}</div>
+        <summary class="subgroup-heading collapsible-heading"><span class="subgroup-title"><a href="#conference/${enc(conf)}">${esc(conf)}</a> ${coverageBadge(status)}</span><span class="group-count">${list.length} paper${list.length === 1 ? '' : 's'}</span></summary>
+        <div class="collapsible-content">${list.length ? paperList(sortPapersByPage(list)) : `<div class="coverage-empty">${esc(coverageEmptyMessage(status))}</div>`}</div>
       </details>`;
     }).join('');
+    const covered = coverage.length;
     app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Years',href:'#years'},{label:year}])}
-      <section class="page-intro"><p class="eyebrow">Year</p><h1>${esc(year)}</h1><p>${papers.length} conference papers in the database.</p></section>
-      ${jumps ? `<section class="jump-panel" aria-label="Jump to conference"><div class="jump-panel-heading"><h2>Jump to conference</h2><p>Conferences with at least one paper in ${esc(year)}.</p></div><div class="jump-chip-list">${jumps}</div></section>` : ''}
-      ${body || '<div class="empty-state">No papers for this year.</div>'}`;
+      <section class="page-intro"><p class="eyebrow">Year</p><h1>${esc(year)}</h1><p>${papers.length} conference papers · ${covered} conference${covered === 1 ? '' : 's'} tracked for coverage.</p></section>
+      ${jumps ? `<section class="jump-panel" aria-label="Jump to conference"><div class="jump-panel-heading"><h2>Jump to conference</h2><p>Only conferences with at least one included paper are shown here.</p></div><div class="jump-chip-list">${jumps}</div></section>` : ''}
+      ${body || '<div class="empty-state">No papers or coverage records for this year.</div>'}`;
     bindJumpLinks();
   }
 
@@ -300,7 +374,7 @@
     const { facets } = state.data;
     app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Conferences'}])}
       <section class="page-intro"><p class="eyebrow">Browse</p><h1>By conference</h1><p>Select a conference to see its papers grouped by year.</p></section>
-      <div class="card-grid">${facets.conferences.map(c => `<a class="nav-card" href="#conference/${enc(c.value)}"><strong>${esc(c.value)}</strong><span>${esc(c.label || c.value)} · ${c.count} papers</span></a>`).join('') || '<div class="empty-state">No conferences yet.</div>'}</div>`;
+      <div class="card-grid">${facets.conferences.map(c => `<a class="nav-card" href="#conference/${enc(c.value)}"><strong>${esc(c.value)}</strong><span>${esc(c.label || c.value)} · ${c.count} papers · ${c.coveredYears || 0} covered years</span></a>`).join('') || '<div class="empty-state">No conferences yet.</div>'}</div>`;
   }
 
   function renderSurveys() {
@@ -317,16 +391,18 @@
       ${body || '<div class="empty-state">No survey papers yet. Add BibTeX files under <code>bib/survey/</code> or use <code>bib/survey.bib</code>.</div>'}`;
   }
 
-  function renderConference(conference) {
+  function renderConference(conference, params = new URLSearchParams()) {
     const papers = state.data.papers.filter(p => p.conference === conference);
+    const coverage = coverageRecords().filter(item => item.conference === conference);
     const label = state.data.conferenceNames[conference] || conference;
     const groups = new Map();
-    papers.forEach(p => { if (!groups.has(p.year)) groups.set(p.year, []); groups.get(p.year).push(p); });
+    coverage.forEach(item => { if (!groups.has(String(item.year))) groups.set(String(item.year), []); });
+    papers.forEach(p => { if (!groups.has(String(p.year))) groups.set(String(p.year), []); groups.get(String(p.year)).push(p); });
     const entries = [...groups.entries()].sort(([a],[b]) => Number(b)-Number(a));
     const maxCount = Math.max(1, ...entries.map(([, list]) => list.length));
     const chart = entries.map(([year, list]) => {
       const targetId = `conference-${safeDomId(conference)}-year-${safeDomId(year)}`;
-      const width = Math.max(7, Math.round((list.length / maxCount) * 100));
+      const width = list.length ? Math.max(7, Math.round((list.length / maxCount) * 100)) : 0;
       return `<button type="button" class="year-bar-row" data-jump-target="${esc(targetId)}" aria-label="Jump to ${esc(year)}, ${list.length} papers">
         <span class="year-bar-label">${esc(year)}</span>
         <span class="year-bar-track"><span class="year-bar-fill" style="width:${width}%"></span></span>
@@ -335,17 +411,55 @@
     }).join('');
     const body = entries.map(([year, list]) => {
       const targetId = `conference-${safeDomId(conference)}-year-${safeDomId(year)}`;
+      const coverageItem = coverageRecord(conference, year);
+      const status = coverageItem?.status || '';
       return `
       <details class="subgroup collapsible-subgroup jump-target" id="${esc(targetId)}" open>
-        <summary class="subgroup-heading collapsible-heading"><span class="subgroup-title"><a href="#year/${enc(year)}">${esc(year)}</a></span><span class="group-count">${list.length} papers</span></summary>
-        <div class="collapsible-content">${paperList(sortPapersByPage(list))}</div>
+        <summary class="subgroup-heading collapsible-heading"><span class="subgroup-title"><a href="#year/${enc(year)}">${esc(year)}</a> ${coverageBadge(status)}</span><span class="group-count">${list.length} paper${list.length === 1 ? '' : 's'}</span></summary>
+        <div class="collapsible-content">${list.length ? paperList(sortPapersByPage(list)) : `<div class="coverage-empty">${esc(coverageEmptyMessage(status))}</div>`}</div>
       </details>`;
     }).join('');
     app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Conferences',href:'#conferences'},{label:conference}])}
-      <section class="page-intro"><p class="eyebrow">Conference</p><h1>${esc(conference)}</h1><p>${esc(label)} · ${papers.length} papers.</p></section>
-      ${chart ? `<section class="jump-panel conference-chart" aria-label="Papers by year"><div class="jump-panel-heading"><h2>Papers by year</h2><p>Click a bar to jump to that year.</p></div><div class="year-bar-chart">${chart}</div></section>` : ''}
-      ${body || '<div class="empty-state">No papers for this conference.</div>'}`;
+      <section class="page-intro"><p class="eyebrow">Conference</p><h1>${esc(conference)}</h1><p>${esc(label)} · ${papers.length} papers · ${coverage.length} years tracked for coverage.</p></section>
+      ${chart ? `<section class="jump-panel conference-chart" aria-label="Papers by year"><div class="jump-panel-heading"><h2>Papers by year</h2><p>Click a bar to jump to that year; zero-paper surveyed years are retained.</p></div><div class="year-bar-chart">${chart}</div></section>` : ''}
+      ${body || '<div class="empty-state">No papers or coverage records for this conference.</div>'}`;
     bindJumpLinks();
+    const jumpYear = params.get('jump');
+    if (jumpYear) {
+      requestAnimationFrame(() => {
+        const target = document.getElementById(`conference-${safeDomId(conference)}-year-${safeDomId(jumpYear)}`);
+        if (target) {
+          if (target instanceof HTMLDetailsElement) target.open = true;
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    }
+  }
+
+  function renderCoverage() {
+    const coverage = coverageRecords();
+    const groups = new Map();
+    coverage.forEach(item => {
+      if (!groups.has(item.conference)) groups.set(item.conference, []);
+      groups.get(item.conference).push(item);
+    });
+    const body = [...groups.entries()].sort(([a],[b]) => a.localeCompare(b)).map(([conference, items]) => {
+      const sorted = [...items].sort((a,b) => Number(b.year) - Number(a.year));
+      const complete = sorted.filter(item => item.status === 'complete').length;
+      const partial = sorted.filter(item => item.status === 'partial').length;
+      const years = sorted.map(item => {
+        const href = `#conference/${enc(conference)}?jump=${enc(item.year)}`;
+        return `<a class="coverage-year-chip" href="${href}"><strong>${esc(item.year)}</strong>${coverageBadge(item.status)}<span>${item.count} paper${item.count === 1 ? '' : 's'}</span></a>`;
+      }).join('');
+      return `<details class="coverage-conference">
+        <summary><span><strong>${esc(conference)}</strong> · ${esc(state.data.conferenceNames[conference] || conference)}</span><span>${sorted.length} years · ${complete} surveyed${partial ? ` · ${partial} partial` : ''}</span></summary>
+        <div class="coverage-year-list">${years}</div>
+      </details>`;
+    }).join('');
+    app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Coverage'}])}
+      <section class="page-intro"><p class="eyebrow">Data quality</p><h1>Survey coverage</h1><p>An existing <code>bib/CONF/CONF_YEAR.bib</code> file is treated as surveyed by default, including an empty file representing zero included papers. Use <code>data/coverage.json</code> to override a conference-year as <strong>partial</strong> or <strong>planned</strong>.</p></section>
+      <div class="coverage-legend">${coverageBadge('complete')} ${coverageBadge('partial')} ${coverageBadge('planned')}</div>
+      <div class="coverage-list">${body || '<div class="empty-state">No coverage records yet.</div>'}</div>`;
   }
 
   function renderTags() {
@@ -396,7 +510,8 @@
       q: params.get('q') || '',
       years: params.getAll('year'),
       conferences: params.getAll('conference'),
-      tags: params.getAll('tag')
+      tags: params.getAll('tag'),
+      sort: params.get('sort') || 'year-desc'
     };
 
     app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Search'}])}
@@ -412,7 +527,7 @@
           ${filterCheckboxGroup('tag', 'Tag', facets.tags, initial.tags)}
         </div>
       </form>
-      <div class="results-bar"><span id="result-count"></span><button class="clear-button" id="clear-search" type="button">Clear filters</button></div>
+      <div class="results-bar"><span id="result-count"></span><div class="results-controls"><label for="search-sort">Sort</label><select id="search-sort" name="sort" form="search-form"><option value="year-desc"${initial.sort === 'year-desc' ? ' selected' : ''}>Year: newest / proceedings order</option><option value="year-asc"${initial.sort === 'year-asc' ? ' selected' : ''}>Year: oldest / proceedings order</option><option value="conference"${initial.sort === 'conference' ? ' selected' : ''}>Conference / year / page</option><option value="title"${initial.sort === 'title' ? ' selected' : ''}>Title A–Z</option></select><button class="clear-button" id="clear-search" type="button">Clear filters</button></div></div>
       <div id="search-results"></div>`;
 
     const form = document.getElementById('search-form');
@@ -426,13 +541,14 @@
       const years = fd.getAll('year').map(String);
       const conferences = fd.getAll('conference').map(String);
       const tags = fd.getAll('tag').map(String);
-      const filtered = sortPapers(allRecords().filter(p => {
+      const sortMode = (fd.get('sort') || 'year-desc').toString();
+      const filtered = sortSearchPapers(allRecords().filter(p => {
         if (q && !searchableText(p).includes(q)) return false;
         if (years.length && (p.collection === 'survey' || !years.includes(String(p.year)))) return false;
         if (conferences.length && (p.collection === 'survey' || !conferences.includes(p.conference))) return false;
         if (tags.length && !tags.some(tag => (p.tags || []).includes(tag))) return false;
         return true;
-      }));
+      }), sortMode);
       resultCount.textContent = `${filtered.length} result${filtered.length === 1 ? '' : 's'}`;
       results.innerHTML = paperList(filtered);
       bindCopyButtons();
@@ -442,6 +558,7 @@
         years.forEach(year => out.append('year', year));
         conferences.forEach(conference => out.append('conference', conference));
         tags.forEach(tag => out.append('tag', tag));
+        if (sortMode !== 'year-desc') out.set('sort', sortMode);
         history.replaceState(null, '', `#search${out.toString() ? `?${out}` : ''}`);
       }
     }
@@ -468,6 +585,8 @@
       const empty = group.querySelector('.filter-no-match');
       if (empty) empty.hidden = visible !== 0;
     }
+
+    document.getElementById('search-sort')?.addEventListener('change', () => update(true));
 
     form.querySelectorAll('.filter-search-input').forEach(input => {
       input.addEventListener('input', e => {
@@ -500,6 +619,7 @@
       <section class="page-intro"><p class="eyebrow">About</p><h1>Scope and maintenance</h1><p>This is a curated conference bibliography for research substantially related to parameterized complexity.</p></section>
       <div class="about-grid">
         <article class="about-card"><h3>Scope</h3><p>The main bibliography contains papers accepted to international conferences. Survey papers may be maintained in a separate collection; they are excluded from the Years and Conferences views and counts. The site is designed for overviewing research activity and trends, not for replacing publisher pages, DBLP, or archival repositories.</p>${contact}</article>
+        <article class="about-card"><h3>Coverage</h3><p>Coverage is tracked separately from paper counts so that a surveyed conference-year with zero included papers is distinguishable from a year that has not been surveyed. Existing conference-year BibTeX files count as surveyed unless overridden in <code>data/coverage.json</code>.</p><p><a href="#coverage">Open coverage view</a></p></article>
         <article class="about-card"><h3>Metadata</h3><p>Entries are generated from BibTeX files. Tags are curator-supplied through <code>keywords</code> or <code>tags</code>. Paper text and abstracts are not copied into this site by default.</p></article>
         <article class="about-card"><h3>Copyright and links</h3><p>The site stores bibliographic metadata and links to external paper pages. Copyright in linked papers remains with the respective authors and/or publishers. Reuse of third-party metadata should follow the terms of its original source.</p></article>
         <article class="about-card"><h3>LLM disclosure</h3><p>This website was developed with assistance from a generative AI / large language model. LLM-assisted collection or classification may also be used during maintenance, but maintainers should verify inclusion decisions and bibliographic metadata.</p></article>
@@ -533,8 +653,9 @@
       case 'years': renderYears(); break;
       case 'year': renderYear(r.arg); break;
       case 'conferences': renderConferences(); break;
-      case 'conference': renderConference(r.arg); break;
+      case 'conference': renderConference(r.arg, r.params); break;
       case 'surveys': renderSurveys(); break;
+      case 'coverage': renderCoverage(); break;
       case 'tags': renderTags(); break;
       case 'tag': renderTag(r.arg); break;
       case 'search': renderSearch(r.params); break;
