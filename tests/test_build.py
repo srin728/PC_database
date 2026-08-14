@@ -53,6 +53,22 @@ class BuildHelpersTest(unittest.TestCase):
         self.assertEqual(mod.preferred_paper_url('10.1000/example', 'https://dblp.org/example'), 'https://doi.org/10.1000/example')
         self.assertEqual(mod.preferred_paper_url('', 'https://dblp.org/example'), 'https://dblp.org/example')
 
+    def test_crossref_test_prefix_falls_back_to_url(self):
+        doi = '10.5555/3326943.3327068'
+        url = 'https://dblp.org/rec/conf/nips/BensonK18'
+        self.assertEqual(mod.doi_resolver_url(doi), '')
+        self.assertEqual(mod.preferred_paper_url(doi, url), url)
+
+    def test_filename_year_takes_precedence_over_bibtex_year(self):
+        path = mod.BIB_DIR / 'SODA' / 'SODA_2025.bib'
+        self.assertEqual(mod.infer_year(path, {'year': '2024'}), '2025')
+        self.assertEqual(mod.infer_year(path, {'year': '2026'}), '2025')
+
+    def test_bibtex_year_is_fallback_when_filename_has_no_year(self):
+        path = mod.BIB_DIR / 'survey' / 'survey.bib'
+        self.assertEqual(mod.infer_year(path, {'year': '2023'}), '2023')
+        self.assertEqual(mod.infer_year(path, {}), 'Unknown')
+
     def test_coverage_status_aliases(self):
         self.assertEqual(mod.normalize_coverage_status('surveyed'), 'complete')
         self.assertEqual(mod.normalize_coverage_status('in progress'), 'partial')

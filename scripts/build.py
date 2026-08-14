@@ -262,9 +262,34 @@ def normalize_url(value: str) -> str:
 
 
 
+NON_RESOLVING_DOI_PREFIXES = (
+    # Crossref documents 10.5555 as a test prefix.  Values under this prefix
+    # are sometimes used as publisher/database identifiers (notably by ACM
+    # DL), but doi.org resolution is not reliable enough to use as the site's
+    # primary link.  Prefer the BibTeX url field when it is available.
+    "10.5555/",
+)
+
+
+def doi_resolver_url(doi: str) -> str:
+    """Return a doi.org URL only for DOI prefixes we treat as resolvable."""
+    normalized = (doi or '').strip()
+    if not normalized:
+        return ''
+    lowered = normalized.casefold()
+    if any(lowered.startswith(prefix) for prefix in NON_RESOLVING_DOI_PREFIXES):
+        return ''
+    return f"https://doi.org/{normalized}"
+
+
 def preferred_paper_url(doi: str, url: str) -> str:
-    """Return the preferred external paper URL, prioritizing DOI over url."""
-    return f"https://doi.org/{doi}" if doi else url
+    """Return the best external paper URL.
+
+    A normal DOI is preferred over ``url``.  For known non-resolving/test DOI
+    prefixes such as 10.5555, the BibTeX ``url`` is preferred instead so that
+    title clicks do not lead to a broken doi.org resolution.
+    """
+    return doi_resolver_url(doi) or url
 
 def is_survey_bib(path: Path) -> bool:
     """Recognize either bib/survey/*.bib or bib/survey.bib as survey data."""
@@ -486,12 +511,21 @@ def git_date(path: Path) -> str:
 
 
 def infer_year(path: Path, fields: dict) -> str:
+    """Infer the display/classification year, preferring the BibTeX filename.
+
+    Conference bibliographies are maintained as ``XXX_20YY.bib``.  The file
+    therefore defines which conference edition an entry belongs to, even when
+    the entry's own ``year`` field is missing or inconsistent.  Only files
+    whose names contain no year (for example a single ``survey.bib``) fall back
+    to the BibTeX ``year`` field.
+    """
+    m = re.search(r'_(19|20)\d{2}(?:[^0-9]|$)', path.stem + '_')
+    if m:
+        return m.group(0).strip('_')
+
     raw = latex_to_text(fields.get('year', '')).strip()
     m = re.search(r'(19|20)\d{2}', raw)
-    if m:
-        return m.group(0)
-    m = re.search(r'_(19|20)\d{2}(?:[^0-9]|$)', path.stem + '_')
-    return m.group(0).strip('_') if m else 'Unknown'
+    return m.group(0) if m else 'Unknown'
 
 
 COVERAGE_STATUSES = {'complete', 'partial', 'planned'}
