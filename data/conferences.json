@@ -51,5 +51,9 @@
   "WINE": "International Conference on Web and Internet Economics",
   "IJCAI": "International Joint Conference on Artificial Intelligence",
   "TAMC": "Annual Conference on Theory and Applications of Models of Computation",
+  "ALGOWIN": "International Symposium on Algorithmics of Wireless Networks",
+  "ALGOCLOUD": "International Symposium on Algorithmic Aspects of Cloud Computing",
+  "ATMOS": "Symposium on Algorithmic Approaches for Transportation Modelling, Optimization, and Systems",
+  "WAOA": "Workshop on Approximation and Online Algorithms",
   "CALDAM": "Annual International Conference on Algorithms and Discrete Applied Mathematics"
 }
