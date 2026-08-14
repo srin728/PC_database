@@ -194,6 +194,7 @@ h3 { font-size: 18px; }
 .year-bar-row {
   display: grid; grid-template-columns: 58px minmax(0, 1fr) 36px; align-items: center; gap: 9px; width: 100%;
   border: 0; background: transparent; color: var(--ink); padding: 3px 2px; cursor: pointer; text-align: left; font: inherit;
+  text-decoration: none;
 }
 .year-bar-row:hover .year-bar-track { background: rgba(122,153,207,.24); }
 .year-bar-row:hover .year-bar-fill { filter: brightness(.94); }

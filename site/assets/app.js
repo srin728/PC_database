@@ -320,9 +320,21 @@
 
   function renderYears() {
     const { facets } = state.data;
+    const years = facets.years || [];
+    const maxCount = Math.max(1, ...years.map(y => Number(y.count) || 0));
+    const chart = years.map(y => {
+      const count = Number(y.count) || 0;
+      const width = count ? Math.max(7, Math.round((count / maxCount) * 100)) : 0;
+      return `<a class="year-bar-row" href="#year/${enc(y.value)}" aria-label="Open ${esc(y.value)}, ${count} papers">
+        <span class="year-bar-label">${esc(y.value)}</span>
+        <span class="year-bar-track"><span class="year-bar-fill" style="width:${width}%"></span></span>
+        <span class="year-bar-count">${count}</span>
+      </a>`;
+    }).join('');
     app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Years'}])}
       <section class="page-intro"><p class="eyebrow">Browse</p><h1>By year</h1><p>Select a year to see papers grouped by conference.</p></section>
-      <div class="card-grid">${facets.years.map(y => `<a class="nav-card" href="#year/${enc(y.value)}"><strong>${esc(y.value)}</strong><span>${y.count} papers · ${y.coveredConferences ?? y.conferences} covered conferences</span></a>`).join('') || '<div class="empty-state">No years yet.</div>'}</div>`;
+      ${chart ? `<section class="jump-panel conference-chart" aria-label="Papers by year"><div class="jump-panel-heading"><h2>Papers by year</h2><p>Click a bar to open that year.</p></div><div class="year-bar-chart">${chart}</div></section>` : ''}
+      <div class="card-grid">${years.map(y => `<a class="nav-card" href="#year/${enc(y.value)}"><strong>${esc(y.value)}</strong><span>${y.count} papers · ${y.coveredConferences ?? y.conferences} covered conferences</span></a>`).join('') || '<div class="empty-state">No years yet.</div>'}</div>`;
   }
 
   function safeDomId(value = '') {
