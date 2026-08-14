@@ -204,6 +204,23 @@ h3 { font-size: 18px; }
 .year-bar-count { color: var(--muted); font-size: 12px; font-weight: 750; text-align: right; font-variant-numeric: tabular-nums; }
 .jump-target { scroll-margin-top: 86px; }
 
+.year-overview-details { padding: 0; }
+.year-overview-summary {
+  position: relative; list-style: none; padding: 16px 46px 16px 18px; cursor: pointer; user-select: none;
+}
+.year-overview-summary::-webkit-details-marker { display: none; }
+.year-overview-summary > span { display: flex; flex-direction: column; gap: 2px; }
+.year-overview-summary strong { font-size: 18px; }
+.year-overview-summary small { color: var(--muted); font-size: 12px; font-weight: 400; }
+.year-overview-summary::after {
+  content: '▾'; position: absolute; right: 18px; top: 50%; transform: translateY(-50%) rotate(-90deg);
+  color: var(--primary-dark); font-size: 14px; transition: transform .15s ease;
+}
+.year-overview-details[open] > .year-overview-summary::after { transform: translateY(-50%) rotate(0deg); }
+.year-overview-summary:hover { background: rgba(122,153,207,.07); }
+.year-overview-chart-body { padding: 0 18px 18px; border-top: 1px solid var(--line); }
+.year-overview-chart-body .year-bar-chart { padding-top: 14px; }
+
 .group { margin-top: 30px; }
 .group-header { display: flex; align-items: baseline; gap: 10px; padding-bottom: 8px; border-bottom: 2px solid var(--line); }
 .group-header h2, .group-header h3 { margin: 0; }

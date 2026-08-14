@@ -333,7 +333,7 @@
     }).join('');
     app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Years'}])}
       <section class="page-intro"><p class="eyebrow">Browse</p><h1>By year</h1><p>Select a year to see papers grouped by conference.</p></section>
-      ${chart ? `<section class="jump-panel conference-chart" aria-label="Papers by year"><div class="jump-panel-heading"><h2>Papers by year</h2><p>Click a bar to open that year.</p></div><div class="year-bar-chart">${chart}</div></section>` : ''}
+      ${chart ? `<details class="jump-panel conference-chart year-overview-details" aria-label="Papers by year"><summary class="year-overview-summary"><span><strong>Papers by year</strong><small>Click to show or hide the chart</small></span></summary><div class="year-overview-chart-body"><div class="year-bar-chart">${chart}</div></div></details>` : ''}
       <div class="card-grid">${years.map(y => `<a class="nav-card" href="#year/${enc(y.value)}"><strong>${esc(y.value)}</strong><span>${y.count} papers · ${y.coveredConferences ?? y.conferences} covered conferences</span></a>`).join('') || '<div class="empty-state">No years yet.</div>'}</div>`;
   }
 
