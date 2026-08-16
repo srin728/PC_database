@@ -28,6 +28,23 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
+      - name: Check Python syntax
+        run: python3 -m py_compile scripts/build.py scripts/validate.py
+
+      - name: Run Python unit tests
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
+
+      - name: Validate BibTeX data
+        run: python3 scripts/validate.py
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check site/assets/search-engine.js
+          node --check site/assets/app.js
+
+      - name: Test optimized search engine
+        run: node tests/search_engine_test.js
+
       - name: Build static site
         run: python3 scripts/build.py
 

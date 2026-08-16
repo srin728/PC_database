@@ -604,7 +604,7 @@ def version_output_assets(out_dir: Path) -> None:
     if not index.exists():
         return
     html = index.read_text(encoding='utf-8')
-    for relative in ('assets/styles.css', 'assets/app.js'):
+    for relative in ('assets/styles.css', 'assets/search-engine.js', 'assets/app.js'):
         asset = out_dir / relative
         if not asset.exists():
             continue
