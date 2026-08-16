@@ -29,13 +29,16 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Check Python syntax
-        run: python3 -m py_compile scripts/build.py scripts/validate.py
+        run: python3 -m py_compile scripts/build.py scripts/validate.py scripts/audit_links.py
 
       - name: Run Python unit tests
         run: python3 -m unittest discover -s tests -p 'test_*.py'
 
       - name: Validate BibTeX data
         run: python3 scripts/validate.py
+
+      - name: Audit paper links
+        run: python3 scripts/audit_links.py
 
       - name: Check JavaScript syntax
         run: |

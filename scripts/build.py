@@ -263,11 +263,12 @@ def normalize_url(value: str) -> str:
 
 
 NON_RESOLVING_DOI_PREFIXES = (
-    # Crossref documents 10.5555 as a test prefix.  Values under this prefix
-    # are sometimes used as publisher/database identifiers (notably by ACM
-    # DL), but doi.org resolution is not reliable enough to use as the site's
-    # primary link.  Prefer the BibTeX url field when it is available.
+    # Crossref identifies these prefixes as test/unmaintained records rather
+    # than dependable publication identifiers. Never make doi.org the
+    # primary paper link for them; prefer a real URL or a DBLP record.
     "10.5555/",
+    "10.88888/",
+    "10.50505/",
 )
 
 
@@ -282,14 +283,43 @@ def doi_resolver_url(doi: str) -> str:
     return f"https://doi.org/{normalized}"
 
 
-def preferred_paper_url(doi: str, url: str) -> str:
-    """Return the best external paper URL.
+def dblp_record_url(key: str) -> str:
+    """Derive DBLP's persistent record URL from a DBLP-prefixed BibTeX key."""
+    normalized = (key or '').strip()
+    if not normalized.startswith('DBLP:'):
+        return ''
+    path = normalized[len('DBLP:'):].lstrip('/')
+    if not path or any(ch.isspace() for ch in path):
+        return ''
+    return f"https://dblp.org/rec/{path}"
 
-    A normal DOI is preferred over ``url``.  For known non-resolving/test DOI
-    prefixes such as 10.5555, the BibTeX ``url`` is preferred instead so that
-    title clicks do not lead to a broken doi.org resolution.
+
+def is_non_resolving_doi_url(url: str) -> bool:
+    """Return whether URL is a doi.org link for a blocked DOI prefix."""
+    normalized = (url or '').strip()
+    match = re.match(r'^https?://(?:dx\.)?doi\.org/(.+)$', normalized, flags=re.IGNORECASE)
+    if not match:
+        return False
+    doi = normalize_doi(match.group(1))
+    return bool(doi) and not doi_resolver_url(doi)
+
+
+def preferred_paper_url(doi: str, url: str, key: str = '') -> str:
+    """Return the safest available external paper URL.
+
+    Normal publication DOIs remain the first choice. For known
+    test/unmaintained DOI prefixes, use a non-DOI ``url`` when available.
+    A ``url`` that merely points back to the same non-resolving doi.org record
+    is rejected. Finally, DBLP-prefixed keys provide a stable metadata-page
+    fallback for legacy entries without usable DOI/URL metadata.
     """
-    return doi_resolver_url(doi) or url
+    resolver = doi_resolver_url(doi)
+    if resolver:
+        return resolver
+    normalized_url = (url or '').strip()
+    if normalized_url and not is_non_resolving_doi_url(normalized_url):
+        return normalized_url
+    return dblp_record_url(key)
 
 def is_survey_bib(path: Path) -> bool:
     """Recognize either bib/survey/*.bib or bib/survey.bib as survey data."""
@@ -647,7 +677,7 @@ def build():
             paper_id = hashlib.sha1(f"{collection}\0{conference}\0{year}\0{entry['key']}".encode()).hexdigest()[:12]
             doi = normalize_doi(f.get('doi', ''))
             url = normalize_url(f.get('url', ''))
-            primary_url = preferred_paper_url(doi, url)
+            primary_url = preferred_paper_url(doi, url, entry['key'])
             record = {
                 'id': paper_id,
                 'key': entry['key'],

@@ -193,11 +193,36 @@
     return sortPapers(list);
   }
 
+  const NON_RESOLVING_DOI_PREFIXES = ['10.5555/', '10.88888/', '10.50505/'];
+
+  function paperDoiUrl(p) {
+    const doi = String(p?.doi || '').trim();
+    if (!doi) return '';
+    const lowered = doi.toLowerCase();
+    if (NON_RESOLVING_DOI_PREFIXES.some(prefix => lowered.startsWith(prefix))) return '';
+    return `https://doi.org/${doi}`;
+  }
+
+  function isNonResolvingDoiUrl(url) {
+    const value = String(url || '').trim();
+    const match = value.match(/^https?:\/\/(?:dx\.)?doi\.org\/(.+)$/i);
+    if (!match) return false;
+    const doi = match[1].toLowerCase();
+    return NON_RESOLVING_DOI_PREFIXES.some(prefix => doi.startsWith(prefix));
+  }
+
   function paperPrimaryUrl(p) {
-    // DOI is the canonical title link whenever it is available.  Do not let a
-    // stale generated primaryUrl (for example a DBLP URL) override it.
-    if (p.doi) return `https://doi.org/${p.doi}`;
-    if (p.url) return p.url;
+    // build.py computes primaryUrl using the same policy. Prefer it, but keep
+    // defensive fallbacks so cached/older JSON cannot reintroduce a broken
+    // test-prefix DOI link.
+    const generated = String(p?.primaryUrl || '').trim();
+    if (generated && !isNonResolvingDoiUrl(generated)) return generated;
+    const doiUrl = paperDoiUrl(p);
+    if (doiUrl) return doiUrl;
+    const url = String(p?.url || '').trim();
+    if (url && !isNonResolvingDoiUrl(url)) return url;
+    const key = String(p?.key || '').trim();
+    if (key.startsWith('DBLP:')) return `https://dblp.org/rec/${key.slice(5).replace(/^\/+/, '')}`;
     return '';
   }
 
@@ -205,7 +230,8 @@
     const primary = paperPrimaryUrl(p);
     const title = primary ? `<a href="${esc(primary)}" target="_blank" rel="noopener noreferrer">${esc(p.title)}</a>` : esc(p.title);
     const tags = (p.tags || []).map(t => `<a class="tag" href="#tag/${enc(t)}">${esc(t)}</a>`).join('');
-    const doi = p.doi ? externalLink(`https://doi.org/${p.doi}`, 'DOI') : '';
+    const doiUrl = paperDoiUrl(p);
+    const doi = doiUrl ? externalLink(doiUrl, 'DOI') : '';
     const source = p.sourcePath ? `<a href="${esc(p.sourcePath)}" download="${esc(p.sourceFileName || 'paper.bib')}">Source .bib</a>` : '';
     const raw = p.bibtex ? `<button type="button" class="copy-bib" data-bib-id="${esc(p.id)}">Copy BibTeX</button>` : '';
     const actions = [doi, source, raw].filter(Boolean).join('');

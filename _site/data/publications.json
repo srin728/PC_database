@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-16 17:43 UTC",
+  "generatedAt": "2026-08-16 19:05 UTC",
   "site": {
     "siteTitle": "Parameterized Complexity Conference Papers",
     "shortTitle": "PC Papers",
@@ -86725,7 +86725,7 @@
       "sourceBib": "bib/SOFSEM/SOFSEM_2015.bib",
       "doi": "",
       "url": "",
-      "primaryUrl": "",
+      "primaryUrl": "https://dblp.org/rec/conf/sofsem/HanakaO15",
       "tags": [],
       "sourcePath": "bib-entry/c5f1f3dcc2c2.bib",
       "sourceFileName": "DBLP_conf_sofsem_HanakaO15.bib"
@@ -100015,7 +100015,7 @@
       "sourceBib": "bib/STACS/STACS_2012.bib",
       "doi": "",
       "url": "",
-      "primaryUrl": "",
+      "primaryUrl": "https://dblp.org/rec/conf/stacs/KawarabayashiK12a",
       "tags": [],
       "sourcePath": "bib-entry/21b702d7e1bd.bib",
       "sourceFileName": "DBLP_conf_stacs_KawarabayashiK12a.bib"
@@ -100618,7 +100618,7 @@
       "sourceBib": "bib/AAAI/AAAI_2011.bib",
       "doi": "",
       "url": "",
-      "primaryUrl": "",
+      "primaryUrl": "https://dblp.org/rec/conf/aaai/SchlotterFE11",
       "tags": [],
       "sourcePath": "bib-entry/774d66f5b78a.bib",
       "sourceFileName": "DBLP_conf_aaai_SchlotterFE11.bib"
@@ -103605,7 +103605,7 @@
       "sourceBib": "bib/STACS/STACS_2011.bib",
       "doi": "",
       "url": "",
-      "primaryUrl": "",
+      "primaryUrl": "https://dblp.org/rec/conf/stacs/GanianHO11",
       "tags": [],
       "sourcePath": "bib-entry/5a98b1fed7d2.bib",
       "sourceFileName": "DBLP_conf_stacs_GanianHO11.bib"
@@ -103657,7 +103657,7 @@
       "sourceBib": "bib/STACS/STACS_2011.bib",
       "doi": "",
       "url": "",
-      "primaryUrl": "",
+      "primaryUrl": "https://dblp.org/rec/conf/stacs/Dereniowski11",
       "tags": [],
       "sourcePath": "bib-entry/62a43ee0b1b1.bib",
       "sourceFileName": "DBLP_conf_stacs_Dereniowski11.bib"
@@ -107518,7 +107518,7 @@
       "sourceBib": "bib/STACS/STACS_2010.bib",
       "doi": "",
       "url": "",
-      "primaryUrl": "",
+      "primaryUrl": "https://dblp.org/rec/conf/stacs/MarxOR10",
       "tags": [],
       "sourcePath": "bib-entry/6bb4e2cc6ee3.bib",
       "sourceFileName": "DBLP_conf_stacs_MarxOR10.bib"
@@ -110936,7 +110936,7 @@
       "sourceBib": "bib/STACS/STACS_2009.bib",
       "doi": "",
       "url": "",
-      "primaryUrl": "",
+      "primaryUrl": "https://dblp.org/rec/conf/stacs/FominGT09",
       "tags": [],
       "sourcePath": "bib-entry/6849ea45d2cd.bib",
       "sourceFileName": "DBLP_conf_stacs_FominGT09.bib"
@@ -111715,7 +111715,7 @@
       "sourceBib": "bib/AAAI/AAAI_2008.bib",
       "doi": "",
       "url": "",
-      "primaryUrl": "",
+      "primaryUrl": "https://dblp.org/rec/conf/aaai/AnsoteguiBLM08",
       "tags": [],
       "sourcePath": "bib-entry/73cabbe9763c.bib",
       "sourceFileName": "DBLP_conf_aaai_AnsoteguiBLM08.bib"
@@ -111741,7 +111741,7 @@
       "sourceBib": "bib/AAAI/AAAI_2008.bib",
       "doi": "",
       "url": "",
-      "primaryUrl": "",
+      "primaryUrl": "https://dblp.org/rec/conf/aaai/PipatsrisawatD08",
       "tags": [],
       "sourcePath": "bib-entry/f792b8d89e67.bib",
       "sourceFileName": "DBLP_conf_aaai_PipatsrisawatD08.bib"
@@ -113204,7 +113204,7 @@
       "sourceBib": "bib/IWOCA/IWOCA_2008.bib",
       "doi": "",
       "url": "",
-      "primaryUrl": "",
+      "primaryUrl": "https://dblp.org/rec/conf/iwoca/HlinenyG08",
       "tags": [],
       "sourcePath": "bib-entry/0a51649558b9.bib",
       "sourceFileName": "DBLP_conf_iwoca_HlinenyG08.bib"
@@ -114373,7 +114373,7 @@
       "sourceBib": "bib/AAAI/AAAI_2007.bib",
       "doi": "",
       "url": "",
-      "primaryUrl": "",
+      "primaryUrl": "https://dblp.org/rec/conf/aaai/AnsoteguiBFM07",
       "tags": [],
       "sourcePath": "bib-entry/7c9d31ae6346.bib",
       "sourceFileName": "DBLP_conf_aaai_AnsoteguiBFM07.bib"
@@ -115742,7 +115742,7 @@
       "sourceBib": "bib/SODA/SODA_2007.bib",
       "doi": "10.5555/1283383.1283413",
       "url": "https://doi.org/10.5555/1283383.1283413",
-      "primaryUrl": "https://doi.org/10.5555/1283383.1283413",
+      "primaryUrl": "https://dblp.org/rec/conf/soda/DemaineHM07",
       "tags": [],
       "sourcePath": "bib-entry/7cbb0352a50b.bib",
       "sourceFileName": "DBLP_conf_soda_DemaineHM07.bib"
@@ -115770,7 +115770,7 @@
       "sourceBib": "bib/SODA/SODA_2007.bib",
       "doi": "10.5555/1283383.1283415",
       "url": "https://doi.org/10.5555/1283383.1283415",
-      "primaryUrl": "https://doi.org/10.5555/1283383.1283415",
+      "primaryUrl": "https://dblp.org/rec/conf/soda/ChenLSZ07",
       "tags": [],
       "sourcePath": "bib-entry/8cd9bafc8c94.bib",
       "sourceFileName": "DBLP_conf_soda_ChenLSZ07.bib"
@@ -118035,7 +118035,7 @@
       "sourceBib": "bib/SODA/SODA_2006.bib",
       "doi": "10.5555/1109557.1109559",
       "url": "https://doi.org/10.5555/1109557.1109559",
-      "primaryUrl": "https://doi.org/10.5555/1109557.1109559",
+      "primaryUrl": "https://dblp.org/rec/conf/soda/KojevnikovK06",
       "tags": [],
       "sourcePath": "bib-entry/2c1f21514fc4.bib",
       "sourceFileName": "DBLP_conf_soda_KojevnikovK06.bib"
@@ -118706,7 +118706,7 @@
       "sourceBib": "bib/AAAI/AAAI_2005.bib",
       "doi": "",
       "url": "",
-      "primaryUrl": "",
+      "primaryUrl": "https://dblp.org/rec/conf/aaai/KilbySTW05",
       "tags": [],
       "sourcePath": "bib-entry/f56a46fd00d9.bib",
       "sourceFileName": "DBLP_conf_aaai_KilbySTW05.bib"
@@ -121910,7 +121910,7 @@
       "sourceBib": "bib/SODA/SODA_2004.bib",
       "doi": "10.5555/982792.982919",
       "url": "https://doi.org/10.5555/982792.982919",
-      "primaryUrl": "https://doi.org/10.5555/982792.982919",
+      "primaryUrl": "https://dblp.org/rec/conf/soda/DemaineH04",
       "tags": [],
       "sourcePath": "bib-entry/7178270144f4.bib",
       "sourceFileName": "DBLP_conf_soda_DemaineH04.bib"
@@ -123240,7 +123240,7 @@
       "sourceBib": "bib/STACS/STACS_2003.bib",
       "doi": "",
       "url": "",
-      "primaryUrl": "",
+      "primaryUrl": "https://dblp.org/rec/conf/stacs/Hlineny03",
       "tags": [],
       "sourcePath": "bib-entry/e670989fdc39.bib",
       "sourceFileName": "DBLP_conf_stacs_Hlineny03.bib"
@@ -126334,7 +126334,7 @@
       "sourceBib": "bib/STACS/STACS_1999.bib",
       "doi": "",
       "url": "",
-      "primaryUrl": "",
+      "primaryUrl": "https://dblp.org/rec/conf/stacs/KratschS99",
       "tags": [],
       "sourcePath": "bib-entry/722917f81a0b.bib",
       "sourceFileName": "DBLP_conf_stacs_KratschS99.bib"
@@ -126361,7 +126361,7 @@
       "sourceBib": "bib/STACS/STACS_1999.bib",
       "doi": "",
       "url": "",
-      "primaryUrl": "",
+      "primaryUrl": "https://dblp.org/rec/conf/stacs/KloksKM99",
       "tags": [],
       "sourcePath": "bib-entry/eed710aebd2f.bib",
       "sourceFileName": "DBLP_conf_stacs_KloksKM99.bib"
@@ -126387,7 +126387,7 @@
       "sourceBib": "bib/STACS/STACS_1999.bib",
       "doi": "",
       "url": "",
-      "primaryUrl": "",
+      "primaryUrl": "https://dblp.org/rec/conf/stacs/BouchitteT99",
       "tags": [],
       "sourcePath": "bib-entry/9e8deefd6df9.bib",
       "sourceFileName": "DBLP_conf_stacs_BouchitteT99.bib"
@@ -126937,7 +126937,7 @@
       "sourceBib": "bib/STACS/STACS_1998.bib",
       "doi": "",
       "url": "",
-      "primaryUrl": "",
+      "primaryUrl": "https://dblp.org/rec/conf/stacs/Lapoire98",
       "tags": [],
       "sourcePath": "bib-entry/4d41822bc845.bib",
       "sourceFileName": "DBLP_conf_stacs_Lapoire98.bib"
