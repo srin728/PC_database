@@ -3594,7 +3594,7 @@
       "year": "2025",
       "status": "complete",
       "source": "bib",
-      "count": 1
+      "count": 0
     },
     {
       "conference": "COCOA",
@@ -7710,7 +7710,7 @@
       "year": "2007",
       "status": "complete",
       "source": "bib",
-      "count": 1
+      "count": 0
     },
     {
       "conference": "IWOCA",
@@ -12327,7 +12327,7 @@
     }
   ],
   "facets": {
-    "paperCount": 4294,
+    "paperCount": 4292,
     "surveyCount": 62,
     "yearCount": 40,
     "conferenceCount": 58,
@@ -12343,8 +12343,8 @@
       },
       {
         "value": "2025",
-        "count": 324,
-        "conferences": 45,
+        "count": 323,
+        "conferences": 44,
         "coveredConferences": 50,
         "complete": 50,
         "partial": 0
@@ -12487,8 +12487,8 @@
       },
       {
         "value": "2007",
-        "count": 76,
-        "conferences": 31,
+        "count": 75,
+        "conferences": 30,
         "coveredConferences": 42,
         "complete": 42,
         "partial": 0
@@ -12730,7 +12730,7 @@
       {
         "value": "COCOA",
         "label": "International Conference on Combinatorial Optimization and Applications",
-        "count": 75,
+        "count": 74,
         "coveredYears": 18,
         "complete": 18,
         "partial": 0
@@ -12906,7 +12906,7 @@
       {
         "value": "IWOCA",
         "label": "International Workshop on Combinatorial Algorithms",
-        "count": 124,
+        "count": 123,
         "coveredYears": 38,
         "complete": 38,
         "partial": 0
@@ -19374,29 +19374,6 @@
       "tags": [],
       "sourcePath": "bib-entry/772433df1a62.bib",
       "sourceFileName": "DBLP_conf_ciac_ChakrabortyFMT25.bib"
-    },
-    {
-      "id": "6d15561bfe9e",
-      "key": "COCOA2025ParameterizedKCenterKSupplier",
-      "type": "inproceedings",
-      "title": "Parameterized Approximations for the k-Center and k-Supplier Problems in General Finite-Dimensional Normed Linear Space",
-      "authors": [],
-      "authorText": "",
-      "year": "2025",
-      "conference": "COCOA",
-      "conferenceName": "International Conference on Combinatorial Optimization and Applications",
-      "collection": "conference",
-      "booktitle": "Combinatorial Optimization and Applications - 18th International Conference, COCOA 2025, Tianjin, China, November 28-30, 2025, Proceedings",
-      "pages": "",
-      "pageStart": null,
-      "sourceOrder": 0,
-      "sourceBib": "bib/COCOA/COCOA_2025.bib",
-      "doi": "",
-      "url": "https://link.springer.com/book/9789819216628",
-      "primaryUrl": "https://link.springer.com/book/9789819216628",
-      "tags": [],
-      "sourcePath": "bib-entry/6d15561bfe9e.bib",
-      "sourceFileName": "COCOA2025ParameterizedKCenterKSupplier.bib"
     },
     {
       "id": "2f671072de48",
@@ -115429,31 +115406,6 @@
       "tags": [],
       "sourcePath": "bib-entry/417a7ffc3497.bib",
       "sourceFileName": "DBLP_conf_isaac_BachooreB07.bib"
-    },
-    {
-      "id": "575d7ab8939d",
-      "key": "Suchy2008SeidelSwitching",
-      "type": "inproceedings",
-      "title": "Some Parameterized Problems Related to Seidel's Switching",
-      "authors": [
-        "Ondřej Suchý"
-      ],
-      "authorText": "Ondřej Suchý",
-      "year": "2007",
-      "conference": "IWOCA",
-      "conferenceName": "International Workshop on Combinatorial Algorithms",
-      "collection": "conference",
-      "booktitle": "Combinatorial Algorithms, 18th International Workshop, IWOCA 2007, Lake Macquarie, Australia, July 1--4, 2007, Proceedings",
-      "pages": "148--157",
-      "pageStart": 148,
-      "sourceOrder": 0,
-      "sourceBib": "bib/IWOCA/IWOCA_2007.bib",
-      "doi": "",
-      "url": "",
-      "primaryUrl": "",
-      "tags": [],
-      "sourcePath": "bib-entry/575d7ab8939d.bib",
-      "sourceFileName": "Suchy2008SeidelSwitching.bib"
     },
     {
       "id": "71451e9e99cf",
