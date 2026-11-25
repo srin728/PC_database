@@ -20,15 +20,26 @@ def main() -> int:
     errors: list[str] = []
     entry_count = 0
     conference_folders = set()
+    seen_entries = {}
 
     for path in files:
-        if not build.is_survey_bib(path):
-            conference_folders.add(path.parent.name)
+        is_survey = build.is_survey_bib(path)
+        collection = 'survey' if is_survey else 'conference'
+        conference = '' if is_survey else path.parent.name
+        if conference:
+            conference_folders.add(conference)
         try:
             entries = build.parse_bib_file(path)
             entry_count += len(entries)
         except Exception as exc:
             errors.append(str(exc))
+            continue
+        for entry in entries:
+            identity = (collection, conference, build.infer_year(path, entry['fields']), entry['key'])
+            try:
+                build.register_entry(identity, path, seen_entries)
+            except ValueError as exc:
+                errors.append(str(exc))
 
     coverage_overrides = build.load_json(build.DATA_DIR / 'coverage.json', {})
     defined_sources = set(conference_folders) | (set(coverage_overrides) if isinstance(coverage_overrides, dict) else set())

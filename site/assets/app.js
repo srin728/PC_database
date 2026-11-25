@@ -588,7 +588,7 @@
     };
 
     app.innerHTML = `${breadcrumbs([{label:'Home',href:'#home'},{label:'Search'}])}
-      <section class="page-intro"><p class="eyebrow">Find papers</p><h1>Search</h1><p>Free-text and tag search include the separate survey collection. Year and conference filters apply only to conference papers. Within each checkbox group, selections are combined with OR; different groups are combined with AND.</p></section>
+      <section class="page-intro"><p class="eyebrow">Find papers</p><h1>Search</h1><p>Free-text search matches all terms in any order. Free-text and tag search include the separate survey collection. Year and conference filters apply only to conference papers. Within each checkbox group, selections are combined with OR; different groups are combined with AND.</p></section>
       <form class="search-panel" id="search-form">
         <div class="search-query-row">
           <label class="search-query-label" for="search-q">Search text</label>
@@ -651,11 +651,12 @@
         : `${total} result${total === 1 ? '' : 's'}`;
     }
 
-    function appendNextBatch() {
+    function appendNextBatch(moveFocus = false) {
       if (!currentIds.length) return;
       const list = document.getElementById('search-paper-list');
       const more = document.getElementById('search-more');
       if (!list || !more) return;
+      const firstNewIndex = visibleCount;
       const end = Math.min(visibleCount + PAGE_SIZE, currentIds.length);
       const html = currentIds.slice(visibleCount, end).map(id => paperCard(index.records[id])).join('');
       list.insertAdjacentHTML('beforeend', html);
@@ -666,6 +667,13 @@
         ? `<button type="button" class="button" id="show-more-search">Show ${Math.min(PAGE_SIZE, remaining)} more</button>`
         : '';
       updateResultCount();
+      if (moveFocus) {
+        const title = list.children[firstNewIndex]?.querySelector('.paper-title');
+        if (title) {
+          title.tabIndex = -1;
+          title.focus();
+        }
+      }
     }
 
     function resetResults() {
@@ -694,7 +702,10 @@
 
     function scheduleTextSearch() {
       clearTimeout(searchTimer);
-      searchTimer = window.setTimeout(() => update(true), DEBOUNCE_MS);
+      const scheduledHash = location.hash;
+      searchTimer = window.setTimeout(() => {
+        if (form.isConnected && location.hash === scheduledHash && !composing) update(true);
+      }, DEBOUNCE_MS);
     }
 
     function updateSelectedCounts() {
@@ -720,7 +731,10 @@
       if (empty) empty.hidden = visible !== 0;
     }
 
-    sortSelect.addEventListener('change', () => update(true));
+    sortSelect.addEventListener('change', () => {
+      clearTimeout(searchTimer);
+      update(true);
+    });
 
     searchInput.addEventListener('compositionstart', () => { composing = true; });
     searchInput.addEventListener('compositionend', () => {
@@ -746,14 +760,19 @@
     });
 
     results.addEventListener('click', event => {
-      if (event.target.closest('#show-more-search')) appendNextBatch();
+      const button = event.target.closest('#show-more-search');
+      if (button) appendNextBatch(document.activeElement === button || event.detail === 0);
     });
 
     document.getElementById('clear-search').addEventListener('click', () => {
       clearTimeout(searchTimer);
-      form.reset();
+      searchInput.value = '';
+      form.querySelectorAll('input[type="checkbox"]:checked').forEach(input => { input.checked = false; });
       sortSelect.value = 'year-desc';
-      form.querySelectorAll('.filter-search-input').forEach(input => filterOptions(input));
+      form.querySelectorAll('.filter-search-input').forEach(input => {
+        input.value = '';
+        filterOptions(input);
+      });
       updateSelectedCounts();
       update(true);
     });
@@ -821,6 +840,13 @@
   navToggle.addEventListener('click', () => {
     const open = nav.classList.toggle('open');
     navToggle.setAttribute('aria-expanded', String(open));
+  });
+
+  document.querySelector('.skip-link').addEventListener('click', event => {
+    event.preventDefault();
+    const main = document.getElementById('main');
+    main.focus({preventScroll: true});
+    window.scrollTo({top: 0, behavior: 'instant'});
   });
 
   backToTop.addEventListener('click', () => {

@@ -1,5 +1,6 @@
 from pathlib import Path
 import importlib.util
+import tempfile
 import unittest
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / 'scripts' / 'build.py'
@@ -24,6 +25,39 @@ class BuildHelpersTest(unittest.TestCase):
         self.assertEqual(mod.latex_to_text(f['title']), 'A Parameterized Result for $k$-Path')
         self.assertEqual(mod.split_tags(f['keywords']), ['kernelization', 'FPT algorithms', 'graph algorithms'])
         self.assertEqual(mod.split_authors(f['author'])[1], 'Bob Example')
+
+    def test_rejects_bibtex_input_errors(self):
+        invalid = {
+            '@article{,year={2024}}': 'citation key',
+            '@article{key,title {Missing equals}}': 'field assignment',
+            '@article{key,title=}': 'field assignment',
+            '@article{key,title={First},TITLE={Second}}': 'Duplicate field',
+        }
+        for text, error in invalid.items():
+            with self.subTest(text=text):
+                with self.assertRaisesRegex(ValueError, error):
+                    mod.parse_bibtex(text)
+
+    def test_rejects_duplicate_download_identity(self):
+        identity = ('conference', 'SODA', '2025', 'Key')
+        first = mod.BIB_DIR / 'SODA' / 'SODA_2025.bib'
+        second = mod.BIB_DIR / 'SODA' / 'another_2025.bib'
+        seen = {}
+        mod.register_entry(identity, first, seen)
+        with self.assertRaisesRegex(ValueError, 'Duplicate citation key .*SODA_2025.bib.*another_2025.bib'):
+            mod.register_entry(identity, second, seen)
+        mod.register_entry(('survey', '', '2025', 'Key'), second, seen)
+
+    def test_404_home_path(self):
+        template = (mod.SITE_DIR / '404.html').read_text(encoding='utf-8')
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            for base, href in [('', '/#home'), ('/PC_database', '/PC_database/#home')]:
+                with self.subTest(base=base):
+                    page = out / '404.html'
+                    page.write_text(template, encoding='utf-8')
+                    mod.configure_404(out, base)
+                    self.assertIn(f'href="{href}"', page.read_text(encoding='utf-8'))
 
     def test_doi_normalization_removes_tex_escape(self):
         self.assertEqual(mod.normalize_doi(r'10.1007/978-3-031-38906-1\_8'), '10.1007/978-3-031-38906-1_8')

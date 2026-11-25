@@ -56,5 +56,20 @@
   "ATMOS": "Symposium on Algorithmic Approaches for Transportation Modelling, Optimization, and Systems",
   "WAOA": "Workshop on Approximation and Online Algorithms",
   "SPIRE": "International Symposium on String Processing and Information Retrieval",
-  "CALDAM": "Annual International Conference on Algorithms and Discrete Applied Mathematics"
+  "CALDAM": "Annual International Conference on Algorithms and Discrete Applied Mathematics",
+  "AISTATS": "International Conference on Artificial Intelligence and Statistics",
+  "ALENEX": "Symposium on Algorithm Engineering and Experiments",
+  "COLT": "Conference on Learning Theory",
+  "CP": "International Conference on Principles and Practice of Constraint Programming",
+  "ICAPS": "International Conference on Automated Planning and Scheduling",
+  "ICLR": "International Conference on Learning Representations",
+  "KDD": "ACM SIGKDD Conference on Knowledge Discovery and Data Mining",
+  "KR": "International Conference on Principles of Knowledge Representation and Reasoning",
+  "OPODIS": "International Conference on Principles of Distributed Systems",
+  "SEA": "International Symposium on Experimental Algorithms",
+  "SIROCCO": "International Colloquium on Structural Information and Communication Complexity",
+  "SPAA": "ACM Symposium on Parallelism in Algorithms and Architectures",
+  "SSS": "International Symposium on Stabilization, Safety, and Security of Distributed Systems",
+  "WSDM": "ACM International Conference on Web Search and Data Mining",
+  "WWW": "The Web Conference (International World Wide Web Conference)"
 }

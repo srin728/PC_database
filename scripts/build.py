@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import hashlib
+import html
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -132,15 +134,21 @@ def parse_bibtex(text: str) -> list[dict]:
         if kind in {'comment', 'string', 'preamble'}:
             continue
         chunks = split_top_level(body)
-        if not chunks:
-            continue
-        key = chunks[0].strip()
+        key = chunks[0].strip() if chunks else ''
+        if not key or re.search(r'\s|[{}=]', key):
+            raise ValueError(f"Invalid or empty citation key at offset {at}")
         fields = {}
         for chunk in chunks[1:]:
             assignment = split_assignment(chunk)
-            if assignment:
-                name, value = assignment
-                fields[name.lower()] = unwrap(value)
+            if not assignment:
+                raise ValueError(f"Expected a field assignment in {key!r} at offset {at}")
+            name, value = assignment
+            name = name.lower()
+            if not re.fullmatch(r'[a-z][a-z0-9_-]*', name) or not value:
+                raise ValueError(f"Invalid field assignment {chunk!r} in {key!r} at offset {at}")
+            if name in fields:
+                raise ValueError(f"Duplicate field {name!r} in {key!r} at offset {at}")
+            fields[name] = unwrap(value)
         entries.append({'type': kind, 'key': key, 'fields': fields, 'raw': raw})
     return entries
 
@@ -574,9 +582,12 @@ def parse_bib_file(path: Path) -> list[dict]:
         if offset is not None:
             line_no = text.count('\n', 0, min(offset, len(text))) + 1
             line_text = text.splitlines()[line_no - 1].strip() if text.splitlines() else ''
-            detail = f"entry starting at line {line_no}"
+            reason = str(exc)[:match.start()].rstrip()
+            if reason.endswith(' at'):
+                reason = reason[:-3]
+            detail = f"line {line_no}: {reason}"
             if line_text:
-                detail += f": {line_text[:180]}"
+                detail += f" ({line_text[:180]})"
         else:
             detail = str(exc)
         raise RuntimeError(f"Failed to parse {path.relative_to(ROOT)} ({detail})") from exc
@@ -588,6 +599,17 @@ def normal_bib_files() -> list[Path]:
 
 def all_bib_files() -> list[Path]:
     return sorted({*BIB_DIR.glob('*/*.bib'), *(p for p in BIB_DIR.glob('*.bib') if is_survey_bib(p))})
+
+
+def register_entry(identity: tuple[str, str, str, str], path: Path, seen: dict) -> None:
+    collection, conference, year, key = identity
+    previous = seen.get(identity)
+    if previous is not None:
+        raise ValueError(
+            f"Duplicate citation key {key!r} for {conference or collection} {year}: "
+            f"{previous.relative_to(ROOT)} and {path.relative_to(ROOT)}"
+        )
+    seen[identity] = path
 
 
 def missing_conference_definitions(conferences, conference_names: dict) -> list[str]:
@@ -643,6 +665,14 @@ def version_output_assets(out_dir: Path) -> None:
     index.write_text(html, encoding='utf-8')
 
 
+def configure_404(out_dir: Path, base_path: str) -> None:
+    path = out_dir / '404.html'
+    base = base_path.strip('/')
+    href = f'/{base}/#home' if base else '/#home'
+    content = path.read_text(encoding='utf-8')
+    path.write_text(content.replace('href="/#home"', f'href="{html.escape(href, quote=True)}"'), encoding='utf-8')
+
+
 def build():
     config = load_json(DATA_DIR / 'site.config.json', {})
     conference_names = load_json(DATA_DIR / 'conferences.json', {})
@@ -653,6 +683,7 @@ def build():
     surveys = []
     source_updates = []
     entry_downloads = []
+    seen_entries = {}
     coverage = {}
     bib_files = all_bib_files()
     conference_folders = sorted({p.parent.name for p in bib_files if not is_survey_bib(p)}, key=str.casefold)
@@ -674,7 +705,9 @@ def build():
             year_counts[year] += 1
             authors = split_authors(f.get('author', ''))
             tags = split_tags(';'.join(x for x in (f.get('tags', ''), f.get('keywords', '')) if x))
-            paper_id = hashlib.sha1(f"{collection}\0{conference}\0{year}\0{entry['key']}".encode()).hexdigest()[:12]
+            identity = (collection, conference, year, entry['key'])
+            register_entry(identity, path, seen_entries)
+            paper_id = hashlib.sha1('\0'.join(identity).encode()).hexdigest()[:12]
             doi = normalize_doi(f.get('doi', ''))
             url = normalize_url(f.get('url', ''))
             primary_url = preferred_paper_url(doi, url, entry['key'])
@@ -832,6 +865,7 @@ def build():
         shutil.rmtree(OUT)
     shutil.copytree(SITE_DIR, OUT)
     version_output_assets(OUT)
+    configure_404(OUT, os.environ.get('PAGES_BASE_PATH', ''))
     (OUT / 'data').mkdir(parents=True, exist_ok=True)
     (OUT / 'data' / 'publications.json').write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
 

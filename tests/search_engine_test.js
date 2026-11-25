@@ -8,9 +8,9 @@ vm.runInThisContext(code, { filename: 'search-engine.js' });
 const E = global.PCSearchEngine;
 
 function baseline(records, {q='', years=[], conferences=[], tags=[]}) {
-  const needle = String(q).trim().toLowerCase();
+  const terms = String(q).trim().toLowerCase().split(/\s+/).filter(Boolean);
   return records.map((p, id) => ({p, id})).filter(({p}) => {
-    if (needle && !E.searchableText(p).includes(needle)) return false;
+    if (!terms.every(term => E.searchableText(p).includes(term))) return false;
     if (years.length && (p.collection === 'survey' || !years.includes(String(p.year)))) return false;
     if (conferences.length && (p.collection === 'survey' || !conferences.includes(String(p.conference)))) return false;
     if (tags.length && !tags.some(tag => (p.tags || []).includes(tag))) return false;
@@ -47,6 +47,13 @@ const records = Array.from({length: 2500}, (_, i) => {
 });
 
 const index = E.build(records);
+
+const mixedTerms = E.build([
+  {title: 'Preprocessing for Treewidth: An Analysis through Kernelization'},
+  {title: 'Kernelization only'},
+  {title: 'Treewidth only'}
+]);
+assert.deepStrictEqual(E.query(mixedTerms, {q: '  KERNELIZATION\t treewidth  '}), [0]);
 
 const queries = ['', 'pa', 'parameter', 'vertex cover', 'graph', 'Author 17', 'SODA', 'lower bounds', 'Key24', 'reconfiguration'];
 for (let t = 0; t < 1200; t++) {

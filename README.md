@@ -71,7 +71,7 @@ A paper can be tagged with either `keywords` or `tags`:
 
 Comma and semicolon separators are both accepted for tags.
 
-The conference abbreviation is inferred from the parent folder. The year is taken from the BibTeX `year` field and falls back to the filename if necessary.
+The conference abbreviation is inferred from the parent folder. The year in a filename such as `SODA_2025.bib` determines the conference edition shown on the site. If the filename contains no year, the build uses the BibTeX `year` field. The downloadable BibTeX entry keeps its original publication year.
 
 ### Survey papers
 
@@ -192,7 +192,9 @@ Open `http://localhost:8000/`.
 4. In **Settings → Pages**, choose **GitHub Actions** as the source if GitHub does not select it automatically.
 5. The included workflow builds and deploys the site.
 
-No Node.js or package installation is required.
+The static site build uses Python 3 and its standard library. The supplied GitHub Actions workflow also uses Node.js to check browser-script syntax and run the search-engine tests. It runs these checks before building the site. Neither step requires installing Python or npm packages.
+
+The workflow supplies the GitHub Pages base path so the generated 404 page links back to the site root from nested URLs. For a manual build served under a subdirectory, set `PAGES_BASE_PATH` to that subdirectory (for example, `/PC_database`). The default is the domain root.
 
 ## Search-engine indexing
 

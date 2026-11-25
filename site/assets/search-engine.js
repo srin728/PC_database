@@ -129,6 +129,7 @@
 
   function query(index, options = {}) {
     const q = String(options.q || '').trim().toLowerCase();
+    const terms = q ? q.split(/\s+/) : [];
     const years = options.years || [];
     const conferences = options.conferences || [];
     const tags = options.tags || [];
@@ -161,9 +162,8 @@
       candidate = Array.from(index.allIds);
     }
 
-    // Trigrams are only a necessary condition. Verify against the exact old
-    // substring semantics so the optimized engine cannot introduce false hits.
-    if (q) candidate = candidate.filter(id => index.text[id].includes(q));
+    // A trigram match only narrows candidates. Require every full search term.
+    if (terms.length) candidate = candidate.filter(id => terms.every(term => index.text[id].includes(term)));
     return candidate;
   }
 
