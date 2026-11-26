@@ -35,18 +35,23 @@ def is_escaped(text: str, pos: int) -> bool:
     return slashes % 2 == 1
 
 
-def find_matching(text: str, start: int, opener: str, closer: str) -> int:
-    depth = 0
+def find_matching(text: str, start: int, opener: str, closer: str, *, quoted_fields: bool = True) -> int:
+    depth = 1
+    braces = 0
     in_quote = False
-    for i in range(start, len(text)):
+    for i in range(start + 1, len(text)):
         ch = text[i]
-        if ch == '"' and not is_escaped(text, i):
-            in_quote = not in_quote
-        if in_quote:
+        if ch not in '{}()"' or is_escaped(text, i):
             continue
-        if ch == opener and not is_escaped(text, i):
+        if ch == '"' and quoted_fields and depth == 1 and braces == 0:
+            in_quote = not in_quote
+        elif ch == '{' and (in_quote or opener == '('):
+            braces += 1
+        elif ch == '}' and braces > 0:
+            braces -= 1
+        elif not in_quote and braces == 0 and ch == opener:
             depth += 1
-        elif ch == closer and not is_escaped(text, i):
+        elif not in_quote and braces == 0 and ch == closer:
             depth -= 1
             if depth == 0:
                 return i
@@ -59,20 +64,18 @@ def split_top_level(text: str, separator: str = ',') -> list[str]:
     brace = paren = 0
     in_quote = False
     for i, ch in enumerate(text):
-        if ch == '"' and not is_escaped(text, i):
+        if ch == '"' and brace == 0 and not is_escaped(text, i):
             in_quote = not in_quote
-            continue
-        if in_quote:
             continue
         if ch == '{' and not is_escaped(text, i):
             brace += 1
         elif ch == '}' and not is_escaped(text, i):
             brace -= 1
-        elif ch == '(' and not is_escaped(text, i):
+        elif not in_quote and brace == 0 and ch == '(' and not is_escaped(text, i):
             paren += 1
-        elif ch == ')' and not is_escaped(text, i):
+        elif not in_quote and brace == 0 and ch == ')' and not is_escaped(text, i):
             paren -= 1
-        elif ch == separator and brace == 0 and paren == 0:
+        elif not in_quote and ch == separator and brace == 0 and paren == 0:
             parts.append(text[start:i].strip())
             start = i + 1
     tail = text[start:].strip()
@@ -85,16 +88,14 @@ def split_assignment(text: str) -> tuple[str, str] | None:
     brace = paren = 0
     in_quote = False
     for i, ch in enumerate(text):
-        if ch == '"' and not is_escaped(text, i):
+        if ch == '"' and brace == 0 and not is_escaped(text, i):
             in_quote = not in_quote
-            continue
-        if in_quote:
             continue
         if ch == '{' and not is_escaped(text, i): brace += 1
         elif ch == '}' and not is_escaped(text, i): brace -= 1
-        elif ch == '(' and not is_escaped(text, i): paren += 1
-        elif ch == ')' and not is_escaped(text, i): paren -= 1
-        elif ch == '=' and brace == 0 and paren == 0:
+        elif not in_quote and brace == 0 and ch == '(' and not is_escaped(text, i): paren += 1
+        elif not in_quote and brace == 0 and ch == ')' and not is_escaped(text, i): paren -= 1
+        elif not in_quote and ch == '=' and brace == 0 and paren == 0:
             return text[:i].strip(), text[i+1:].strip()
     return None
 
@@ -103,7 +104,7 @@ def unwrap(value: str) -> str:
     value = value.strip().rstrip(',').strip()
     if len(value) >= 2 and value[0] == '{' and value[-1] == '}':
         try:
-            if find_matching(value, 0, '{', '}') == len(value) - 1:
+            if find_matching(value, 0, '{', '}', quoted_fields=False) == len(value) - 1:
                 return value[1:-1].strip()
         except ValueError:
             pass

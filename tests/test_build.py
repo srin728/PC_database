@@ -26,6 +26,23 @@ class BuildHelpersTest(unittest.TestCase):
         self.assertEqual(mod.split_tags(f['keywords']), ['kernelization', 'FPT algorithms', 'graph algorithms'])
         self.assertEqual(mod.split_authors(f['author'])[1], 'Bob Example')
 
+    def test_quotes_inside_braced_values_keep_entries_separate(self):
+        text = '''@inproceedings{First,
+  author = {Gwena{"e}l Joret},
+  title = {The "first" paper, with punctuation}
+}
+@inproceedings(Second,
+  author = {Paul D{"u}tting},
+  title = "The {second} paper, with punctuation",
+  doi = {10.1007/example}
+)'''
+        first, second = mod.parse_bibtex(text)
+        self.assertEqual(first['key'], 'First')
+        self.assertEqual(first['fields']['title'], 'The "first" paper, with punctuation')
+        self.assertEqual(second['key'], 'Second')
+        self.assertEqual(second['fields']['title'], 'The {second} paper, with punctuation')
+        self.assertEqual(second['fields']['doi'], '10.1007/example')
+
     def test_rejects_bibtex_input_errors(self):
         invalid = {
             '@article{,year={2024}}': 'citation key',

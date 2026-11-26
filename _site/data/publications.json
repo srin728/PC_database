@@ -7703,7 +7703,7 @@
       "year": "2008",
       "status": "complete",
       "source": "bib",
-      "count": 1
+      "count": 0
     },
     {
       "conference": "IWOCA",
@@ -12327,8 +12327,8 @@
     }
   ],
   "facets": {
-    "paperCount": 4292,
-    "surveyCount": 62,
+    "paperCount": 4291,
+    "surveyCount": 60,
     "yearCount": 40,
     "conferenceCount": 58,
     "tagCount": 0,
@@ -12479,8 +12479,8 @@
       },
       {
         "value": "2008",
-        "count": 99,
-        "conferences": 31,
+        "count": 98,
+        "conferences": 30,
         "coveredConferences": 45,
         "complete": 45,
         "partial": 0
@@ -12906,7 +12906,7 @@
       {
         "value": "IWOCA",
         "label": "International Workshop on Combinatorial Algorithms",
-        "count": 123,
+        "count": 122,
         "coveredYears": 38,
         "complete": 38,
         "partial": 0
@@ -111636,7 +111636,7 @@
       "sourceOrder": 0,
       "sourceBib": "bib/WINE/WINE_2009.bib",
       "doi": "10.1007/978-3-642-10841-9_13",
-      "url": "https://dblp.org/rec/conf/wine/CardinalDFJNW09",
+      "url": "https://doi.org/10.1007/978-3-642-10841-9_13",
       "primaryUrl": "https://doi.org/10.1007/978-3-642-10841-9_13",
       "tags": [],
       "sourcePath": "bib-entry/172a839493ff.bib",
@@ -113159,32 +113159,6 @@
       "tags": [],
       "sourcePath": "bib-entry/883285c8d3c4.bib",
       "sourceFileName": "DBLP_conf_isaac_FellowsLMRS08.bib"
-    },
-    {
-      "id": "0a51649558b9",
-      "key": "DBLP:conf/iwoca/HlinenyG08",
-      "type": "inproceedings",
-      "title": "Automata approach to graphs of bounded rank-width",
-      "authors": [
-        "Petr Hlinený",
-        "Robert Ganian"
-      ],
-      "authorText": "Petr Hlinený, Robert Ganian",
-      "year": "2008",
-      "conference": "IWOCA",
-      "conferenceName": "International Workshop on Combinatorial Algorithms",
-      "collection": "conference",
-      "booktitle": "Proceedings of the 19th International Workshop on Combinatorial Algorithms, IWOCA 2008, September 13-15, 2008, Nagoya, Japan",
-      "pages": "4--15",
-      "pageStart": 4,
-      "sourceOrder": 0,
-      "sourceBib": "bib/IWOCA/IWOCA_2008.bib",
-      "doi": "",
-      "url": "",
-      "primaryUrl": "https://dblp.org/rec/conf/iwoca/HlinenyG08",
-      "tags": [],
-      "sourcePath": "bib-entry/0a51649558b9.bib",
-      "sourceFileName": "DBLP_conf_iwoca_HlinenyG08.bib"
     },
     {
       "id": "98bdd19c7167",
@@ -130909,32 +130883,6 @@
       "sourceFileName": "DBLP_journals_eccc_Grohe07.bib"
     },
     {
-      "id": "99770702e761",
-      "key": "DBLP:journals/eatcs/SernaT05",
-      "type": "article",
-      "title": "Parameterized Complexity for Graph Layout Problems",
-      "authors": [
-        "Maria J. Serna",
-        "Dimitrios M. Thilikos"
-      ],
-      "authorText": "Maria J. Serna, Dimitrios M. Thilikos",
-      "year": "2005",
-      "conference": "",
-      "conferenceName": "",
-      "collection": "survey",
-      "booktitle": "",
-      "pages": "41--65",
-      "pageStart": 41,
-      "sourceOrder": 8,
-      "sourceBib": "bib/survey/survey.bib",
-      "doi": "",
-      "url": "https://dblp.org/rec/journals/eatcs/SernaT05",
-      "primaryUrl": "https://dblp.org/rec/journals/eatcs/SernaT05",
-      "tags": [],
-      "sourcePath": "bib-entry/99770702e761.bib",
-      "sourceFileName": "DBLP_journals_eatcs_SernaT05.bib"
-    },
-    {
       "id": "8a7fdfc7c44b",
       "key": "DBLP:conf/esa/Fellows04",
       "type": "inproceedings",
@@ -130958,32 +130906,6 @@
       "tags": [],
       "sourcePath": "bib-entry/8a7fdfc7c44b.bib",
       "sourceFileName": "DBLP_conf_esa_Fellows04.bib"
-    },
-    {
-      "id": "f688f7f83491",
-      "key": "DBLP:journals/eatcs/FlumG04",
-      "type": "article",
-      "title": "Parametrized Complexity and Subexponential Time (Column: Computational Complexity)",
-      "authors": [
-        "Jörg Flum",
-        "Martin Grohe"
-      ],
-      "authorText": "Jörg Flum, Martin Grohe",
-      "year": "2004",
-      "conference": "",
-      "conferenceName": "",
-      "collection": "survey",
-      "booktitle": "",
-      "pages": "71--100",
-      "pageStart": 71,
-      "sourceOrder": 6,
-      "sourceBib": "bib/survey/survey.bib",
-      "doi": "",
-      "url": "https://dblp.org/rec/journals/eatcs/FlumG04",
-      "primaryUrl": "https://dblp.org/rec/journals/eatcs/FlumG04",
-      "tags": [],
-      "sourcePath": "bib-entry/f688f7f83491.bib",
-      "sourceFileName": "DBLP_journals_eatcs_FlumG04.bib"
     },
     {
       "id": "460887fb982a",
